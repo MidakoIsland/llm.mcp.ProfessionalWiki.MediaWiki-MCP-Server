@@ -13,7 +13,7 @@ export function createNamespaceTool( server: McpServer ): RegisteredTool {
 		{
 			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. usagi.games)' ),
 			name: z.string().describe( 'Name of the new namespace' ),
-			content: z.boolean().optional().default( false ).describe( 'Whether this is a content namespace (affects search priority)' ),
+			content: z.boolean().optional().default( true ).describe( 'Whether this is a content namespace (affects search priority)' ),
 			subpages: z.boolean().optional().default( true ).describe( 'Enable subpages' ),
 			visualeditor: z.boolean().optional().default( true ).describe( 'Enable VisualEditor' ),
 			smw: z.boolean().optional().default( false ).describe( 'Enable Semantic MediaWiki for this namespace' ),
