@@ -10,10 +10,12 @@ An MCP (Model Context Protocol) server that enables Large Language Model (LLM) c
 | Name | Description | Permissions |
 |---|---|---|
 | `add-wiki` | Adds a new wiki as an MCP resource from a URL. | - |
+| `create-namespace` 🔐 | Creates a new custom namespace utilizing the BlueSpice Namespace Manager extension. | `Edit namespaces` |
 | `create-page` 🔐 | Create a new wiki page. | `Create, edit, and move pages` |
 | `delete-page` 🔐 | Delete a wiki page. | `Delete pages, revisions, and log entries` |
 | `get-category-members` | Gets all members in the category | - |
 | `get-file` | Returns the standard file object for a file page. | - |
+| `get-namespaces` | Gets a list of all namespaces in the wiki using BlueSpice Namespace Manager extension. | - |
 | `get-page` | Returns the standard page object for a wiki page. | - |
 | `get-page-history` | Returns information about the latest revisions to a wiki page. | - |
 | `get-revision` | Returns the standard revision object for a page. | - |

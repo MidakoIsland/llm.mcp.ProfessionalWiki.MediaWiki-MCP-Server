@@ -10,7 +10,7 @@ type DeepReadonly<T> = {
 
 const config = loadConfigFromFile();
 
-let currentWikiKey: string | undefined = undefined;
+let currentWikiKey: string | undefined;
 
 function sanitize( wikiConfig: DeepReadonly<WikiConfig> ): PublicWikiConfig {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
