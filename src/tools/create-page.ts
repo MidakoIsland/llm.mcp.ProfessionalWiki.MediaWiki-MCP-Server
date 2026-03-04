@@ -9,11 +9,11 @@ import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 export function createPageTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'create-page',
-		'Creates a wiki page with the provided content.',
+		'Creates a wiki page with the provided content. IMPORTANT: Before creating a page, you MUST verify the namespace prefix is correct by fetching namespaces first if the target namespace is custom.',
 		{
 			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			source: z.string().describe( 'Page content in the format specified by the contentModel parameter' ),
-			title: z.string().describe( 'Wiki page title' ),
+			title: z.string().describe( 'Wiki page title including namespace prefix (e.g. "User:John", "MyNamespace:PageTitle")' ),
 			comment: z.string().optional().describe( 'Reason for creating the page' ),
 			contentModel: z.string().optional().default( 'wikitext' ).describe( 'Type of content on the page' )
 		},
