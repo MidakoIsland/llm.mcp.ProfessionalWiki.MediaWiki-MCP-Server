@@ -54,3 +54,7 @@ export function loadConfigFromFile(): Config {
 	const rawData = fs.readFileSync( configPath, 'utf-8' );
 	return JSON.parse( rawData ) as Config;
 }
+
+export function saveConfigToFile( config: Config ): void {
+	fs.writeFileSync( configPath, JSON.stringify( config, null, 2 ) + '\n', 'utf-8' );
+}

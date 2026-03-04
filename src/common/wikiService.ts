@@ -1,7 +1,8 @@
 import {
 	WikiConfig,
 	PublicWikiConfig,
-	loadConfigFromFile
+	loadConfigFromFile,
+	saveConfigToFile
 } from './config.js';
 
 type DeepReadonly<T> = {
@@ -36,10 +37,12 @@ function add( key: string, wikiConfig: WikiConfig ): void {
 	}
 
 	config.wikis[ key ] = wikiConfig;
+	saveConfigToFile( config );
 }
 
 function remove( key: string ): void {
 	delete config.wikis[ key ];
+	saveConfigToFile( config );
 }
 
 function getCurrent(): { key: string; config: DeepReadonly<WikiConfig> } {
