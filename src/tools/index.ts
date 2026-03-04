@@ -20,6 +20,7 @@ import { getCategoryMembersTool } from './get-category-members.js';
 import { searchPageByPrefixTool } from './search-page-by-prefix.js';
 import { getNamespacesTool } from './get-namespaces.js';
 import { createNamespaceTool } from './create-namespace.js';
+import { updateWikiTool } from './update-wiki.js';
 
 const toolRegistrars = [
 	getPageTool,
@@ -39,7 +40,8 @@ const toolRegistrars = [
 	getCategoryMembersTool,
 	searchPageByPrefixTool,
 	getNamespacesTool,
-	createNamespaceTool
+	createNamespaceTool,
+	updateWikiTool
 ];
 
 export function registerAllTools( server: McpServer ): RegisteredTool[] {

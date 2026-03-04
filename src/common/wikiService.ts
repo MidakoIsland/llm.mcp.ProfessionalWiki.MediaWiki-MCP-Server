@@ -40,6 +40,20 @@ function add( key: string, wikiConfig: WikiConfig ): void {
 	saveConfigToFile( config );
 }
 
+function update( key: string, wikiConfig: Partial<WikiConfig> ): void {
+	if ( !key || key.trim() === '' ) {
+		throw new Error( 'Wiki key cannot be empty' );
+	}
+
+	const existingConfig = config.wikis[ key ];
+	if ( !existingConfig ) {
+		throw new Error( `Wiki "${ key }" not found in configuration` );
+	}
+
+	config.wikis[ key ] = { ...existingConfig, ...wikiConfig };
+	saveConfigToFile( config );
+}
+
 function remove( key: string ): void {
 	delete config.wikis[ key ];
 	saveConfigToFile( config );
@@ -69,6 +83,7 @@ export const wikiService = {
 	getAll,
 	get,
 	add,
+	update,
 	remove,
 	getCurrent,
 	setCurrent,
