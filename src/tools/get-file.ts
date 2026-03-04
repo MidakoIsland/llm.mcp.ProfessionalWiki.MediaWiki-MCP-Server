@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest } from '../common/utils.js';
+import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
 import type { MwRestApiFileObject } from '../types/mwRestApi.js';
 
 export function getFileTool( server: McpServer ): RegisteredTool {
@@ -11,6 +11,7 @@ export function getFileTool( server: McpServer ): RegisteredTool {
 		'get-file',
 		'Returns information about a file, including links to download the file in thumbnail, preview, and original formats.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'File title' )
 		},
 		{
@@ -18,11 +19,13 @@ export function getFileTool( server: McpServer ): RegisteredTool {
 			readOnlyHint: true,
 			destructiveHint: false
 		} as ToolAnnotations,
-		async ( { title } ) => handleGetFileTool( title )
+		async ( { wikiSite, title } ) => handleGetFileTool( wikiSite, title )
 	);
 }
 
-async function handleGetFileTool( title: string ): Promise< CallToolResult > {
+async function handleGetFileTool( wikiSite: string, title: string ): Promise< CallToolResult > {
+	ensureWiki( wikiSite );
+
 	let data: MwRestApiFileObject;
 	try {
 		data = await makeRestGetRequest<MwRestApiFileObject>( `/v1/file/${ encodeURIComponent( title ) }` );

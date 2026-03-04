@@ -10,7 +10,7 @@ type DeepReadonly<T> = {
 
 const config = loadConfigFromFile();
 
-let currentWikiKey: string = config.defaultWiki;
+let currentWikiKey: string | undefined = undefined;
 
 function sanitize( wikiConfig: DeepReadonly<WikiConfig> ): PublicWikiConfig {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -43,6 +43,9 @@ function remove( key: string ): void {
 }
 
 function getCurrent(): { key: string; config: DeepReadonly<WikiConfig> } {
+	if ( !currentWikiKey ) {
+		throw new Error( 'No active wiki set. You must provide a valid wikiSite.' );
+	}
 	return {
 		key: currentWikiKey,
 		config: config.wikis[ currentWikiKey ] as DeepReadonly<WikiConfig>
@@ -57,13 +60,8 @@ function setCurrent( key: string ): void {
 }
 
 function reset(): void {
-	if ( config.wikis[ config.defaultWiki ] ) {
-		currentWikiKey = config.defaultWiki;
-	} else {
-		throw new Error( `Default wiki "${ config.defaultWiki }" not found in config.json` );
-	}
+	currentWikiKey = undefined;
 }
-
 export const wikiService = {
 	getAll,
 	get,

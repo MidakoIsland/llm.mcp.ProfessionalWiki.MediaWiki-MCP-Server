@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestPutRequest, getPageUrl, formatEditComment } from '../common/utils.js';
+import { makeRestPutRequest, getPageUrl, formatEditComment, ensureWiki } from '../common/utils.js';
 import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 
 export function updatePageTool( server: McpServer ): RegisteredTool {
@@ -11,6 +11,7 @@ export function updatePageTool( server: McpServer ): RegisteredTool {
 		'update-page',
 		'Updates a wiki page. Replaces the existing content of a page with the provided content',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'Wiki page title' ),
 			source: z.string().describe( 'Page content in the same content model of the existing page' ),
 			latestId: z.number().int().positive().describe( 'Revision ID used as the base for the new source' ),
@@ -22,17 +23,20 @@ export function updatePageTool( server: McpServer ): RegisteredTool {
 			destructiveHint: true
 		} as ToolAnnotations,
 		async (
-			{ title, source, latestId, comment }
-		) => handleUpdatePageTool( title, source, latestId, comment )
+			{ wikiSite, title, source, latestId, comment }
+		) => handleUpdatePageTool( wikiSite, title, source, latestId, comment )
 	);
 }
 
 async function handleUpdatePageTool(
+	wikiSite: string,
 	title: string,
 	source: string,
 	latestId: number,
 	comment?: string
 ): Promise<CallToolResult> {
+	ensureWiki( wikiSite );
+
 	let data: MwRestApiPageObject;
 	try {
 		data = await makeRestPutRequest<MwRestApiPageObject>( `/v1/page/${ encodeURIComponent( title ) }`, {

@@ -1,7 +1,21 @@
 import fetch, { Response } from 'node-fetch';
 import { USER_AGENT } from '../server.js';
 import { wikiService } from './wikiService.js';
-import { getMwn } from './mwn.js';
+import { getMwn, clearMwnCache } from './mwn.js';
+
+export function ensureWiki( wikiSite: string ): void {
+	let currentWiki: string | undefined;
+	try {
+		currentWiki = wikiService.getCurrent().key;
+	} catch {
+		currentWiki = undefined;
+	}
+
+	if ( currentWiki !== wikiSite ) {
+		wikiService.setCurrent( wikiSite );
+		clearMwnCache();
+	}
+}
 
 type RequestConfig = {
 	headers: Record<string, string>;

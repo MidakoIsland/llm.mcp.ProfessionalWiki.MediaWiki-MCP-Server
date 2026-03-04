@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest } from '../common/utils.js';
+import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
 import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 import { ContentFormat, getSubEndpoint } from '../common/mwRestApiContentFormat.js';
 
@@ -12,6 +12,7 @@ export function getPageTool( server: McpServer ): RegisteredTool {
 		'get-page',
 		'Returns a wiki page. Use metadata=true to retrieve the revision ID required by update-page. Set content="none" to fetch only metadata without content.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'Wiki page title' ),
 			content: z.nativeEnum( ContentFormat ).optional().default( ContentFormat.source ).describe( 'Type of content to return' ),
 			metadata: z.boolean().optional().default( false ).describe( 'Whether to include metadata (page ID, revision info, license) in the response' )
@@ -21,12 +22,12 @@ export function getPageTool( server: McpServer ): RegisteredTool {
 			readOnlyHint: true,
 			destructiveHint: false
 		} as ToolAnnotations,
-		async ( { title, content, metadata } ) => handleGetPageTool( title, content, metadata )
+		async ( { wikiSite, title, content, metadata } ) => handleGetPageTool( wikiSite, title, content, metadata )
 	);
 }
 
 async function handleGetPageTool(
-	title: string, content: ContentFormat, metadata: boolean
+	wikiSite: string, title: string, content: ContentFormat, metadata: boolean
 ): Promise<CallToolResult> {
 	if ( content === ContentFormat.none && !metadata ) {
 		return {
@@ -37,6 +38,8 @@ async function handleGetPageTool(
 			isError: true
 		};
 	}
+
+	ensureWiki( wikiSite );
 
 	try {
 		const data = await makeRestGetRequest<MwRestApiPageObject>(

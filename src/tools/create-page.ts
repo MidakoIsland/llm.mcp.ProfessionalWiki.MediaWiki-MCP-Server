@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestPostRequest, getPageUrl, formatEditComment } from '../common/utils.js';
+import { makeRestPostRequest, getPageUrl, formatEditComment, ensureWiki } from '../common/utils.js';
 import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 
 export function createPageTool( server: McpServer ): RegisteredTool {
@@ -11,6 +11,7 @@ export function createPageTool( server: McpServer ): RegisteredTool {
 		'create-page',
 		'Creates a wiki page with the provided content.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			source: z.string().describe( 'Page content in the format specified by the contentModel parameter' ),
 			title: z.string().describe( 'Wiki page title' ),
 			comment: z.string().optional().describe( 'Reason for creating the page' ),
@@ -22,17 +23,20 @@ export function createPageTool( server: McpServer ): RegisteredTool {
 			destructiveHint: true
 		} as ToolAnnotations,
 		async (
-			{ source, title, comment, contentModel }
-		) => handleCreatePageTool( source, title, comment, contentModel )
+			{ wikiSite, source, title, comment, contentModel }
+		) => handleCreatePageTool( wikiSite, source, title, comment, contentModel )
 	);
 }
 
 async function handleCreatePageTool(
+	wikiSite: string,
 	source: string,
 	title: string,
 	comment?: string,
 	contentModel?: string
 ): Promise<CallToolResult> {
+	ensureWiki( wikiSite );
+
 	let data: MwRestApiPageObject;
 
 	try {

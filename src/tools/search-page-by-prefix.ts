@@ -5,12 +5,14 @@ import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontext
 import type { ApiQueryAllPagesParams } from 'types-mediawiki-api';
 /* eslint-enable n/no-missing-import */
 import { getMwn } from '../common/mwn.js';
+import { ensureWiki } from '../common/utils.js';
 
 export function searchPageByPrefixTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'search-page-by-prefix',
 		'Performs a prefix search for page titles.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			prefix: z.string().describe( 'Search prefix' ),
 			limit: z.number().int().min( 1 ).max( 500 ).optional().describe( 'Maximum number of results to return' ),
 			namespace: z.number().int().nonnegative().optional().describe( 'Namespace to search' )
@@ -21,14 +23,16 @@ export function searchPageByPrefixTool( server: McpServer ): RegisteredTool {
 			destructiveHint: false
 		} as ToolAnnotations,
 		async (
-			{ prefix, limit, namespace }
-		) => handleSearchPageByPrefixTool( prefix, limit, namespace )
+			{ wikiSite, prefix, limit, namespace }
+		) => handleSearchPageByPrefixTool( wikiSite, prefix, limit, namespace )
 	);
 }
 
 async function handleSearchPageByPrefixTool(
-	prefix: string, limit?: number, namespace?: number
+	wikiSite: string, prefix: string, limit?: number, namespace?: number
 ): Promise< CallToolResult > {
+	ensureWiki( wikiSite );
+
 	let data: string[];
 	try {
 		const mwn = await getMwn();

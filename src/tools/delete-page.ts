@@ -5,13 +5,14 @@ import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontext
 import type { ApiDeleteResponse } from 'mwn';
 /* eslint-enable n/no-missing-import */
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment } from '../common/utils.js';
+import { formatEditComment, ensureWiki } from '../common/utils.js';
 
 export function deletePageTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'delete-page',
 		'Deletes a wiki page.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'Wiki page title' ),
 			comment: z.string().optional().describe( 'Reason for deleting the page' )
 		},
@@ -21,15 +22,18 @@ export function deletePageTool( server: McpServer ): RegisteredTool {
 			destructiveHint: true
 		} as ToolAnnotations,
 		async (
-			{ title, comment }
-		) => handleDeletePageTool( title, comment )
+			{ wikiSite, title, comment }
+		) => handleDeletePageTool( wikiSite, title, comment )
 	);
 }
 
 async function handleDeletePageTool(
+	wikiSite: string,
 	title: string,
 	comment?: string
 ): Promise<CallToolResult> {
+	ensureWiki( wikiSite );
+
 	let data: ApiDeleteResponse;
 	try {
 		const mwn = await getMwn();

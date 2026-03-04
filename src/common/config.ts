@@ -40,11 +40,9 @@ export type PublicWikiConfig = Omit<WikiConfig, 'token' | 'username' | 'password
 
 export interface Config {
 	wikis: { [key: string]: WikiConfig };
-	defaultWiki: string;
 }
 
 export const defaultConfig: Config = {
-	defaultWiki: 'en.wikipedia.org',
 	wikis: {
 		'en.wikipedia.org': {
 			sitename: 'Wikipedia',

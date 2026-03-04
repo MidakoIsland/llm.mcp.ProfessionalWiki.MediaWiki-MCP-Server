@@ -6,13 +6,14 @@ import type { ApiUploadParams } from 'types-mediawiki-api';
 /* eslint-enable n/no-missing-import */
 import type { ApiUploadResponse } from 'mwn';
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment } from '../common/utils.js';
+import { formatEditComment, ensureWiki } from '../common/utils.js';
 
 export function uploadFileFromUrlTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'upload-file-from-url',
 		'Uploads a file to the wiki from a web URL.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			url: z.string().url().describe( 'URL of the file to upload' ),
 			title: z.string().describe( 'File title' ),
 			text: z.string().describe( 'Wikitext on the file page' ),
@@ -24,14 +25,15 @@ export function uploadFileFromUrlTool( server: McpServer ): RegisteredTool {
 			destructiveHint: true
 		} as ToolAnnotations,
 		async (
-			{ url, title, text, comment }
-		) => handleUploadFileFromUrlTool( url, title, text, comment )
+			{ wikiSite, url, title, text, comment }
+		) => handleUploadFileFromUrlTool( wikiSite, url, title, text, comment )
 	);
 }
 
 async function handleUploadFileFromUrlTool(
-	url: string, title: string, text: string, comment?: string
+	wikiSite: string, url: string, title: string, text: string, comment?: string
 ): Promise< CallToolResult > {
+	ensureWiki( wikiSite );
 
 	let data: ApiUploadResponse;
 	try {

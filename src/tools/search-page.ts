@@ -5,7 +5,7 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
 import { wikiService } from '../common/wikiService.js';
-import { makeRestGetRequest } from '../common/utils.js';
+import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
 import type { MwRestApiSearchPageResponse, MwRestApiSearchResultObject } from '../types/mwRestApi.js';
 
 export function searchPageTool( server: McpServer ): RegisteredTool {
@@ -15,6 +15,7 @@ export function searchPageTool( server: McpServer ): RegisteredTool {
 		'search-page',
 		'Search wiki page titles and contents for the provided search terms, and returns matching pages.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			query: z.string().describe( 'Search terms' ),
 			limit: z.number().int().min( 1 ).max( 100 ).optional().describe( 'Maximum number of search results to return' )
 		},
@@ -23,11 +24,13 @@ export function searchPageTool( server: McpServer ): RegisteredTool {
 			readOnlyHint: true,
 			destructiveHint: false
 		} as ToolAnnotations,
-		async ( { query, limit } ) => handleSearchPageTool( query, limit )
+		async ( { wikiSite, query, limit } ) => handleSearchPageTool( wikiSite, query, limit )
 	);
 }
 
-async function handleSearchPageTool( query: string, limit?: number ): Promise< CallToolResult > {
+async function handleSearchPageTool( wikiSite: string, query: string, limit?: number ): Promise< CallToolResult > {
+	ensureWiki( wikiSite );
+
 	let data: MwRestApiSearchPageResponse;
 	try {
 		data = await makeRestGetRequest<MwRestApiSearchPageResponse>(

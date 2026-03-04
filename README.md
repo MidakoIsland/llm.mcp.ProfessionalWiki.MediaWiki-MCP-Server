@@ -80,7 +80,6 @@ Create a `config.json` file to configure wiki connections. Use the `config.examp
 
 ```json
 {
-  "defaultWiki": "en.wikipedia.org",
   "wikis": {
     "en.wikipedia.org": {
       "sitename": "Wikipedia",
@@ -100,7 +99,6 @@ Create a `config.json` file to configure wiki connections. Use the `config.examp
 
 | Field | Description |
 |---|---|
-| `defaultWiki` | The default wiki identifier to use (matches a key in `wikis`) |
 | `wikis` | Object containing wiki configurations, keyed by domain/identifier |
 
 ### Wiki configuration fields

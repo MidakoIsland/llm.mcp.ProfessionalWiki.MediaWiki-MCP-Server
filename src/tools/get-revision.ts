@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest } from '../common/utils.js';
+import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
 import type { MwRestApiRevisionObject } from '../types/mwRestApi.js';
 import { ContentFormat, getSubEndpoint } from '../common/mwRestApiContentFormat.js';
 
@@ -12,6 +12,7 @@ export function getRevisionTool( server: McpServer ): RegisteredTool {
 		'get-revision',
 		'Returns a revision of a wiki page.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			revisionId: z.number().int().positive().describe( 'Revision ID' ),
 			content: z.nativeEnum( ContentFormat ).describe( 'Type of content to return' ).optional().default( ContentFormat.source ),
 			metadata: z.boolean().describe( 'Whether to include metadata (revision ID, page ID, page title, user ID, user name, timestamp, comment, size, delta, minor, HTML URL) in the response' ).optional().default( false )
@@ -22,13 +23,13 @@ export function getRevisionTool( server: McpServer ): RegisteredTool {
 			destructiveHint: false
 		} as ToolAnnotations,
 		async (
-			{ revisionId, content, metadata }
-		) => handleGetRevisionTool( revisionId, content, metadata )
+			{ wikiSite, revisionId, content, metadata }
+		) => handleGetRevisionTool( wikiSite, revisionId, content, metadata )
 	);
 }
 
 async function handleGetRevisionTool(
-	revisionId: number, content: ContentFormat, metadata: boolean
+	wikiSite: string, revisionId: number, content: ContentFormat, metadata: boolean
 ): Promise<CallToolResult> {
 	if ( content === ContentFormat.none && !metadata ) {
 		return {
@@ -39,6 +40,8 @@ async function handleGetRevisionTool(
 			isError: true
 		};
 	}
+
+	ensureWiki( wikiSite );
 
 	try {
 		const data = await makeRestGetRequest<MwRestApiRevisionObject>(

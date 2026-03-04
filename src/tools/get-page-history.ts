@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest } from '../common/utils.js';
+import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
 import type { MwRestApiGetPageHistoryResponse, MwRestApiRevisionObject } from '../types/mwRestApi.js';
 
 export function getPageHistoryTool( server: McpServer ): RegisteredTool {
@@ -11,6 +11,7 @@ export function getPageHistoryTool( server: McpServer ): RegisteredTool {
 		'get-page-history',
 		'Returns information about the latest revisions to a wiki page, in segments of 20 revisions, starting with the latest revision. The response includes API routes for the next oldest, next newest, and latest revision segments.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'Wiki page title' ),
 			olderThan: z.number().int().positive().optional().describe( 'Revision ID of the oldest revision to return' ),
 			newerThan: z.number().int().positive().optional().describe( 'Revision ID of the newest revision to return' ),
@@ -22,17 +23,20 @@ export function getPageHistoryTool( server: McpServer ): RegisteredTool {
 			destructiveHint: false
 		} as ToolAnnotations,
 		async (
-			{ title, olderThan, newerThan, filter }
-		) => handleGetPageHistoryTool( title, olderThan, newerThan, filter )
+			{ wikiSite, title, olderThan, newerThan, filter }
+		) => handleGetPageHistoryTool( wikiSite, title, olderThan, newerThan, filter )
 	);
 }
 
 async function handleGetPageHistoryTool(
+	wikiSite: string,
 	title: string,
 	olderThan?: number,
 	newerThan?: number,
 	filter?: string
 ): Promise< CallToolResult > {
+	ensureWiki( wikiSite );
+
 	const params: Record<string, string> = {};
 	if ( olderThan ) {
 		params.olderThan = olderThan.toString();

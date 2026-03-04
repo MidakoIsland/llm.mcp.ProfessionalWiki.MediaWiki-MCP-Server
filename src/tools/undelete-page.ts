@@ -5,13 +5,14 @@ import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontext
 import type { ApiUndeleteResponse } from 'mwn';
 /* eslint-enable n/no-missing-import */
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment } from '../common/utils.js';
+import { formatEditComment, ensureWiki } from '../common/utils.js';
 
 export function undeletePageTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'undelete-page',
 		'Undeletes a wiki page.',
 		{
+			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'Wiki page title' ),
 			comment: z.string().optional().describe( 'Reason for undeleting the page' )
 		},
@@ -21,15 +22,18 @@ export function undeletePageTool( server: McpServer ): RegisteredTool {
 			destructiveHint: true
 		} as ToolAnnotations,
 		async (
-			{ title, comment }
-		) => handleUndeletePageTool( title, comment )
+			{ wikiSite, title, comment }
+		) => handleUndeletePageTool( wikiSite, title, comment )
 	);
 }
 
 async function handleUndeletePageTool(
+	wikiSite: string,
 	title: string,
 	comment?: string
 ): Promise<CallToolResult> {
+	ensureWiki( wikiSite );
+
 	let data: ApiUndeleteResponse;
 	try {
 		const mwn = await getMwn();
