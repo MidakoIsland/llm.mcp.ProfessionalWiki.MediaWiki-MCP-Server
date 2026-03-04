@@ -21,6 +21,7 @@ import { searchPageByPrefixTool } from './search-page-by-prefix.js';
 import { getNamespacesTool } from './get-namespaces.js';
 import { createNamespaceTool } from './create-namespace.js';
 import { updateWikiTool } from './update-wiki.js';
+import { getCategoriesTool } from './get-categories.js';
 
 const toolRegistrars = [
 	getPageTool,
@@ -41,7 +42,8 @@ const toolRegistrars = [
 	searchPageByPrefixTool,
 	getNamespacesTool,
 	createNamespaceTool,
-	updateWikiTool
+	updateWikiTool,
+	getCategoriesTool
 ];
 
 export function registerAllTools( server: McpServer ): RegisteredTool[] {
