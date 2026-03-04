@@ -43,24 +43,7 @@ export interface Config {
 }
 
 export const defaultConfig: Config = {
-	wikis: {
-		'en.wikipedia.org': {
-			sitename: 'Wikipedia',
-			server: 'https://en.wikipedia.org',
-			articlepath: '/wiki',
-			scriptpath: '/w',
-			token: null,
-			private: false
-		},
-		'localhost:8080': {
-			sitename: 'Local MediaWiki Docker',
-			server: 'http://localhost:8080',
-			articlepath: '/wiki',
-			scriptpath: '/w',
-			token: null,
-			private: false
-		}
-	}
+	wikis: {}
 };
 const configPath = process.env.CONFIG || 'config.json';
 
