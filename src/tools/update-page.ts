@@ -9,7 +9,7 @@ import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 export function updatePageTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'update-page',
-		'Updates a wiki page. Replaces the existing content of a page with the provided content',
+		'Updates a wiki page. Replaces the existing content of a page with the provided content. CRITICAL: DO NOT write any <h1> title (`= ... =`) into the page content! MediaWiki already generates an H1 title from the page name.',
 		{
 			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'Wiki page title' ),

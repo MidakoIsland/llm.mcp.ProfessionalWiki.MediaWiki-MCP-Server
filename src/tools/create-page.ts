@@ -9,7 +9,7 @@ import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 export function createPageTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'create-page',
-		'Creates a wiki page with the provided content. IMPORTANT: Before creating a page, you MUST verify the namespace prefix is correct by fetching namespaces first if the target namespace is custom.',
+		'Creates a wiki page with the provided content. IMPORTANT: Before creating a page, you MUST verify the namespace prefix is correct by fetching namespaces first if the target namespace is custom. CRITICAL: DO NOT write any <h1> title (`= ... =`) into the page content! MediaWiki already generates an H1 title from the page name.',
 		{
 			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			source: z.string().describe( 'Page content in the format specified by the contentModel parameter' ),
