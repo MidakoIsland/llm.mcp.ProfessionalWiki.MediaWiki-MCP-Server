@@ -10,22 +10,24 @@ import { getMwn } from '../common/mwn.js';
 export function searchPageByVectorTool(server: McpServer): RegisteredTool {
     return server.tool(
         'search-page-by-vector',
-        'Performs a semantic search against a target wiki using the LlamaIndex vector store. Returns up to 5 best-matching page snippets along with their relevance scores and page metadata. Best used for conceptual queries or aggregating information across multiple pages.',
+        'Performs a semantic search against a target wiki using the LlamaIndex vector store. Returns best-matching page snippets along with their relevance scores and page metadata. Best used for conceptual queries or aggregating information across multiple pages.',
         {
             wikiSite: z.string().describe('The name of the wiki site to interact with (e.g. en.wikipedia.org)'),
             query: z.string().describe('Semantic search query string'),
-            wikiId: z.string().describe('The wiki_id used by the vector service to route the request (e.g. usagiwiki)')
+            wikiId: z.string().describe('The wiki_id used by the vector service to route the request (e.g. usagiwiki)'),
+            numSnippets: z.number().int().min(1).max(100).optional().describe('Number of snippets to return (default 5, max 100)'),
+            snippetLength: z.number().int().min(10).max(1000).optional().describe('Maximum text length of each snippet (default 100, max 1000)')
         },
         {
             title: 'Search Page (Vector Semantic Search)',
             readOnlyHint: true,
             destructiveHint: false
         } as ToolAnnotations,
-        async ({ wikiSite, query, wikiId }) => handleSearchPageByVectorTool(wikiSite, query, wikiId)
+        async ({ wikiSite, query, wikiId, numSnippets, snippetLength }) => handleSearchPageByVectorTool(wikiSite, query, wikiId, numSnippets, snippetLength)
     );
 }
 
-async function handleSearchPageByVectorTool(wikiSite: string, query: string, wikiId: string): Promise<CallToolResult> {
+async function handleSearchPageByVectorTool(wikiSite: string, query: string, wikiId: string, numSnippets?: number, snippetLength?: number): Promise<CallToolResult> {
     ensureWiki(wikiSite);
 
     try {
@@ -47,7 +49,14 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, wik
             ? vectorUrl
             : `${vectorUrl.replace(/\/$/, '')}/search`;
 
-        const searchUrl = `${searchEndpoint}?q=${encodeURIComponent(query)}&wiki_id=${encodeURIComponent(wikiId)}`;
+        let searchUrl = `${searchEndpoint}?q=${encodeURIComponent(query)}&wiki_id=${encodeURIComponent(wikiId)}`;
+
+        if (numSnippets !== undefined) {
+            searchUrl += `&limit=${encodeURIComponent(numSnippets.toString())}`;
+        }
+        if (snippetLength !== undefined) {
+            searchUrl += `&snippet_length=${encodeURIComponent(snippetLength.toString())}`;
+        }
 
         const response = await fetch(searchUrl);
 
