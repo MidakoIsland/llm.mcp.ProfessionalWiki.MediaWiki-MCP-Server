@@ -18,6 +18,7 @@ import { getRevisionTool } from './get-revision.js';
 import { undeletePageTool } from './undelete-page.js';
 import { getCategoryMembersTool } from './get-category-members.js';
 import { searchPageByPrefixTool } from './search-page-by-prefix.js';
+import { searchPageByVectorTool } from './search-page-by-vector.js';
 import { getNamespacesTool } from './get-namespaces.js';
 import { createNamespaceTool } from './create-namespace.js';
 import { updateWikiTool } from './update-wiki.js';
@@ -42,6 +43,7 @@ const toolRegistrars = [
 	undeletePageTool,
 	getCategoryMembersTool,
 	searchPageByPrefixTool,
+	searchPageByVectorTool,
 	getNamespacesTool,
 	createNamespaceTool,
 	updateWikiTool,

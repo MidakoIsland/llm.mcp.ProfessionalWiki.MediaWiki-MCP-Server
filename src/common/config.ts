@@ -34,6 +34,11 @@ export interface WikiConfig {
 	 * $wgGroupPermissions['*']['read'] = false; in MediaWiki
 	 */
 	private?: boolean;
+	/**
+	 * URL of the associated LlamaIndex Vector engine endpoint for this wiki.
+	 * E.g., http://127.0.0.1:5000/search
+	 */
+	vectorUrl?: string | null;
 }
 
 export type PublicWikiConfig = Omit<WikiConfig, 'token' | 'username' | 'password'>;
