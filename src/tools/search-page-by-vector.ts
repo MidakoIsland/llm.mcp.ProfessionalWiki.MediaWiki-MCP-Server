@@ -5,11 +5,12 @@ import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontext
 /* eslint-enable n/no-missing-import */
 import { wikiService } from '../common/wikiService.js';
 import { ensureWiki } from '../common/utils.js';
+import { getMwn } from '../common/mwn.js';
 
 export function searchPageByVectorTool(server: McpServer): RegisteredTool {
     return server.tool(
         'search-page-by-vector',
-        'Performs a semantic search against a target wiki using the LlamaIndex vector store.',
+        'Performs a semantic search against a target wiki using the LlamaIndex vector store. Returns up to 5 best-matching page snippets along with their relevance scores and page metadata. Best used for conceptual queries or aggregating information across multiple pages.',
         {
             wikiSite: z.string().describe('The name of the wiki site to interact with (e.g. en.wikipedia.org)'),
             query: z.string().describe('Semantic search query string'),
@@ -60,7 +61,31 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, wik
             throw new Error(data.error);
         }
 
-        const results = data.results || [];
+        let results = data.results || [];
+
+        if (results.length > 0) {
+            // Shio: Verify wiki permissions. The vector engine bypasses MediaWiki restrictions,
+            // so we must cross-reference exactly which titles this authenticated MCP session can read.
+            const mwn = await getMwn();
+            const uniqueTitles = [...new Set<string>(results.map((r: any) => r.metadata?.title).filter(Boolean))];
+
+            if (uniqueTitles.length > 0) {
+                const verifyData = await mwn.request({
+                    action: 'query',
+                    titles: uniqueTitles.join('|')
+                });
+
+                // MediaWiki 'query' returns pages either with a valid pageid or marked as 'missing'/'invalid'.
+                // If the user lacks read permissions, titles often appear as missing or throw an API error.
+                const accessibleTitles = new Set(
+                    (verifyData.query?.pages || [])
+                        .filter((p: any) => !p.missing && !p.invalid)
+                        .map((p: any) => p.title)
+                );
+
+                results = results.filter((r: any) => accessibleTitles.has(r.metadata?.title));
+            }
+        }
 
         if (results.length === 0) {
             return {
