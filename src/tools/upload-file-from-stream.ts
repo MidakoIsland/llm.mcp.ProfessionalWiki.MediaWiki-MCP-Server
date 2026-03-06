@@ -8,8 +8,6 @@ import type { ApiUploadResponse } from 'mwn';
 import { getMwn } from '../common/mwn.js';
 import { formatEditComment, ensureWiki } from '../common/utils.js';
 
-import { Readable } from 'stream';
-
 export function uploadFileFromStreamTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'upload-file-from-stream',
@@ -47,7 +45,8 @@ async function handleUploadFileFromStreamTool(
 		data = await mwn.request( {
 			action: 'upload',
 			file: {
-				stream: Readable.from( buffer ),
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				stream: buffer as any,
 				name: title.replace( /^File:/i, '' ) // mwn's formdata handles the stream param natively
 			},
 			filename: title,
