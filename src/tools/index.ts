@@ -22,6 +22,7 @@ import { getNamespacesTool } from './get-namespaces.js';
 import { createNamespaceTool } from './create-namespace.js';
 import { updateWikiTool } from './update-wiki.js';
 import { getCategoriesTool } from './get-categories.js';
+import { movePageTool } from './move-page.js';
 
 const toolRegistrars = [
 	getPageTool,
@@ -43,7 +44,8 @@ const toolRegistrars = [
 	getNamespacesTool,
 	createNamespaceTool,
 	updateWikiTool,
-	getCategoriesTool
+	getCategoriesTool,
+	movePageTool
 ];
 
 export function registerAllTools( server: McpServer ): RegisteredTool[] {
