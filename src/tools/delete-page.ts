@@ -10,7 +10,7 @@ import { formatEditComment, ensureWiki } from '../common/utils.js';
 export function deletePageTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'delete-page',
-		'Deletes a wiki page.',
+		'Deletes a wiki page. IMPORTANT: If you only want to change the title of a page, DO NOT delete and recreate it. Use the move-page tool instead.',
 		{
 			wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 			title: z.string().describe( 'Wiki page title' ),
