@@ -56,10 +56,11 @@ const configPath = process.env.CONFIG || 'config.json';
 
 export function loadConfigFromFile(): Config {
 	if ( !fs.existsSync( configPath ) ) {
-		return defaultConfig;
+		return { ...defaultConfig };
 	}
 	const rawData = fs.readFileSync( configPath, 'utf-8' );
-	return JSON.parse( rawData ) as Config;
+	const parsedData = JSON.parse( rawData ) as Partial<Config>;
+	return { ...defaultConfig, ...parsedData };
 }
 
 export function saveConfigToFile( config: Config ): void {
