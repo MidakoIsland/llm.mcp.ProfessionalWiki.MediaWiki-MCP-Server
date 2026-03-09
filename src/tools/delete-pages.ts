@@ -9,13 +9,13 @@ import { formatEditComment, ensureWiki } from '../common/utils.js';
 export function deletePagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'delete-pages',
-		'Deletes multiple wiki pages. IMPORTANT: If you only want to change the title of a page, DO NOT delete and recreate it. Use the move-pages tool instead.',
+		'Deletes one or more wiki pages. IMPORTANT: If you only want to change the title of a page, DO NOT delete and recreate it. Use the move-pages tool instead.',
 		{
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 				title: z.string().describe( 'Wiki page title' ),
 				comment: z.string().optional().describe( 'Reason for deleting the page' )
-			} ) ).describe( 'List of pages to delete' )
+			} ) ).describe( 'List of one or more pages to delete' )
 		},
 		{
 			title: 'Delete pages',

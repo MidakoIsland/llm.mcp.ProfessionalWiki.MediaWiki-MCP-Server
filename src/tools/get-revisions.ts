@@ -10,14 +10,14 @@ import { ContentFormat, getSubEndpoint } from '../common/mwRestApiContentFormat.
 export function getRevisionsTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'get-revisions',
-		'Returns multiple revisions of a wiki page or pages.',
+		'Returns one or more revisions of a wiki page or pages.',
 		{
 			revisions: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 				revisionId: z.number().int().positive().describe( 'Revision ID' ),
 				content: z.nativeEnum( ContentFormat ).describe( 'Type of content to return' ).optional().default( ContentFormat.source ),
 				metadata: z.boolean().describe( 'Whether to include metadata (revision ID, page ID, page title, user ID, user name, timestamp, comment, size, delta, minor, HTML URL) in the response' ).optional().default( false )
-			} ) ).describe( 'List of revisions to retrieve' )
+			} ) ).describe( 'List of one or more revisions to retrieve' )
 		},
 		{
 			title: 'Get revisions',

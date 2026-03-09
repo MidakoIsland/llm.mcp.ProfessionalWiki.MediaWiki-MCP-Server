@@ -9,7 +9,7 @@ import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 export function updatePagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'update-pages',
-		'Updates multiple wiki pages. Replaces the existing content of a page with the provided content. CRITICAL: DO NOT write any <h1> title (`= ... =`) into the page content! MediaWiki already generates an H1 title from the page name.',
+		'Updates one or more wiki pages. Replaces the existing content of a page with the provided content. CRITICAL: DO NOT write any <h1> title (`= ... =`) into the page content! MediaWiki already generates an H1 title from the page name.',
 		{
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
@@ -17,7 +17,7 @@ export function updatePagesTool( server: McpServer ): RegisteredTool {
 				source: z.string().describe( 'Page content in the same content model of the existing page' ),
 				latestId: z.number().int().positive().describe( 'Revision ID used as the base for the new source' ),
 				comment: z.string().optional().describe( 'Summary of the edit' )
-			} ) ).describe( 'List of pages to update' )
+			} ) ).describe( 'List of one or more pages to update' )
 		},
 		{
 			title: 'Update pages',

@@ -9,7 +9,7 @@ import { formatEditComment, ensureWiki } from '../common/utils.js';
 export function movePagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'move-pages',
-		'Moves (renames) multiple wiki pages. Can optionally leave a redirect behind.',
+		'Moves (renames) one or more wiki pages. Can optionally leave a redirect behind.',
 		{
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
@@ -18,7 +18,7 @@ export function movePagesTool( server: McpServer ): RegisteredTool {
 				reason: z.string().optional().describe( 'Reason for moving the page' ),
 				noredirect: z.boolean().optional().default( false ).describe( 'If true, do not create a redirect. Requires the suppressredirect right.' ),
 				movesubpages: z.boolean().optional().default( true ).describe( 'If true, rename subpages, if applicable.' )
-			} ) ).describe( 'List of pages to move' )
+			} ) ).describe( 'List of one or more pages to move' )
 		},
 		{
 			title: 'Move pages',

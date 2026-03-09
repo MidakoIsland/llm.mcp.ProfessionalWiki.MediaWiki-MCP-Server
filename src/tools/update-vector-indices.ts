@@ -14,7 +14,7 @@ export function updateVectorIndicesTool( server: McpServer ): RegisteredTool {
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 				title: z.string().describe( 'Wiki page title to re-index' )
-			} ) ).describe( 'List of pages to re-index across one or more wikis' )
+			} ) ).describe( 'List of one or more pages to re-index across one or more wikis' )
 		},
 		{
 			title: 'Update vector indices',

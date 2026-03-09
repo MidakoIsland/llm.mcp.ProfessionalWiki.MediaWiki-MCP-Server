@@ -10,14 +10,14 @@ import { ContentFormat, getSubEndpoint } from '../common/mwRestApiContentFormat.
 export function getPagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'get-pages',
-		'Returns multiple wiki pages. Use metadata=true to retrieve the revision ID required by update-pages. Set content="none" to fetch only metadata without content.',
+		'Returns one or more wiki pages. Use metadata=true to retrieve the revision ID required by update-pages. Set content="none" to fetch only metadata without content.',
 		{
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 				title: z.string().describe( 'Wiki page title' ),
 				content: z.nativeEnum( ContentFormat ).optional().default( ContentFormat.source ).describe( 'Type of content to return' ),
 				metadata: z.boolean().optional().default( false ).describe( 'Whether to include metadata (page ID, revision info, license) in the response' )
-			} ) ).describe( 'List of pages to get' )
+			} ) ).describe( 'List of one or more pages to get' )
 		},
 		{
 			title: 'Get pages',

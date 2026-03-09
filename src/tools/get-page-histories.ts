@@ -9,7 +9,7 @@ import type { MwRestApiGetPageHistoryResponse, MwRestApiRevisionObject } from '.
 export function getPageHistoriesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'get-page-histories',
-		'Returns information about the latest revisions to multiple wiki pages, in segments of 20 revisions, starting with the latest revision. The response includes API routes for the next oldest, next newest, and latest revision segments.',
+		'Returns information about the latest revisions to one or more wiki pages, in segments of 20 revisions, starting with the latest revision. The response includes API routes for the next oldest, next newest, and latest revision segments.',
 		{
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
@@ -17,7 +17,7 @@ export function getPageHistoriesTool( server: McpServer ): RegisteredTool {
 				olderThan: z.number().int().positive().optional().describe( 'Revision ID of the oldest revision to return' ),
 				newerThan: z.number().int().positive().optional().describe( 'Revision ID of the newest revision to return' ),
 				filter: z.string().optional().describe( 'Filter that returns only revisions with certain tags. Only support one filter per request.' )
-			} ) ).describe( 'List of pages to get history for' )
+			} ) ).describe( 'List of one or more pages to get history for' )
 		},
 		{
 			title: 'Get page histories',

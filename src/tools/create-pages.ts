@@ -9,7 +9,7 @@ import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 export function createPagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'create-pages',
-		'Creates multiple wiki pages with the provided content. IMPORTANT: Before creating a page, you MUST verify the namespace prefix is correct by fetching namespaces first if the target namespace is custom. CRITICAL: DO NOT write any <h1> title (`= ... =`) into the page content! MediaWiki already generates an H1 title from the page name.',
+		'Creates one or more wiki pages with the provided content. IMPORTANT: Before creating a page, you MUST verify the namespace prefix is correct by fetching namespaces first if the target namespace is custom. CRITICAL: DO NOT write any <h1> title (`= ... =`) into the page content! MediaWiki already generates an H1 title from the page name.',
 		{
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
@@ -17,7 +17,7 @@ export function createPagesTool( server: McpServer ): RegisteredTool {
 				title: z.string().describe( 'Wiki page title including namespace prefix (e.g. "User:John", "MyNamespace:PageTitle")' ),
 				comment: z.string().optional().describe( 'Reason for creating the page' ),
 				contentModel: z.string().optional().default( 'wikitext' ).describe( 'Type of content on the page' )
-			} ) ).describe( 'List of pages to create' )
+			} ) ).describe( 'List of one or more pages to create' )
 		},
 		{
 			title: 'Create pages',

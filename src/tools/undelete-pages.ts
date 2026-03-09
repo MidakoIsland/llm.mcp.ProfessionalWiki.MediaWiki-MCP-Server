@@ -9,13 +9,13 @@ import { formatEditComment, ensureWiki } from '../common/utils.js';
 export function undeletePagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
 		'undelete-pages',
-		'Undeletes multiple wiki pages.',
+		'Undeletes one or more wiki pages.',
 		{
 			pages: z.array( z.object( {
 				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
 				title: z.string().describe( 'Wiki page title' ),
 				comment: z.string().optional().describe( 'Reason for undeleting the page' )
-			} ) ).describe( 'List of pages to undelete' )
+			} ) ).describe( 'List of one or more pages to undelete' )
 		},
 		{
 			title: 'Undelete pages',
