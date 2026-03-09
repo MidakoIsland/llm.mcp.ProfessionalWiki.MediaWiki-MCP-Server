@@ -79,6 +79,26 @@ function setCurrent( key: string ): void {
 function reset(): void {
 	currentWikiKey = undefined;
 }
+
+function getVectorServerUrl( wikiKey: string ): string {
+	const wikiConfig = config.wikis[ wikiKey ];
+	if ( !wikiConfig ) {
+		throw new Error( `Wiki "${ wikiKey }" not found in configuration` );
+	}
+
+	// 1. Try to get it from the specific wiki config
+	if ( wikiConfig.vectorServerUrl && wikiConfig.vectorServerUrl.trim() !== '' ) {
+		return wikiConfig.vectorServerUrl;
+	}
+
+	// 2. Fallback to the global defaultVectorServerUrl
+	if ( config.defaultVectorServerUrl && config.defaultVectorServerUrl.trim() !== '' ) {
+		return config.defaultVectorServerUrl;
+	}
+
+	throw new Error( `No vectorServerUrl configured for wiki "${ wikiKey }" and no defaultVectorServerUrl found in global config.` );
+}
+
 export const wikiService = {
 	getAll,
 	get,
@@ -88,5 +108,7 @@ export const wikiService = {
 	getCurrent,
 	setCurrent,
 	sanitize,
-	reset
+	reset,
+	getVectorServerUrl
 };
+

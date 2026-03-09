@@ -38,17 +38,19 @@ export interface WikiConfig {
 	 * URL of the associated LlamaIndex Vector engine endpoint for this wiki.
 	 * E.g., http://127.0.0.1:5000/search
 	 */
-	vectorUrl?: string | null;
+	vectorServerUrl?: string | null;
 }
 
 export type PublicWikiConfig = Omit<WikiConfig, 'token' | 'username' | 'password'>;
 
 export interface Config {
 	wikis: { [key: string]: WikiConfig };
+	defaultVectorServerUrl?: string;
 }
 
 export const defaultConfig: Config = {
-	wikis: {}
+	wikis: {},
+	defaultVectorServerUrl: 'http://127.0.0.1:5000/search'
 };
 const configPath = process.env.CONFIG || 'config.json';
 
@@ -63,3 +65,4 @@ export function loadConfigFromFile(): Config {
 export function saveConfigToFile( config: Config ): void {
 	fs.writeFileSync( configPath, JSON.stringify( config, null, 2 ) + '\n', 'utf-8' );
 }
+

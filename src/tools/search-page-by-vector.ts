@@ -49,17 +49,7 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, num
     ensureWiki(wikiSite);
 
     try {
-        const config = wikiService.getCurrent().config;
-        const vectorUrl = config.vectorUrl;
-
-        if (!vectorUrl) {
-            return {
-                content: [
-                    { type: 'text', text: `Configuration error: No 'vectorUrl' defined for wiki '${wikiSite}'. Example: http://127.0.0.1:5000/search` } as TextContent
-                ],
-                isError: true
-            };
-        }
+        const vectorUrl = wikiService.getVectorServerUrl(wikiSite);
 
         // Shio: Use wikiSite as the implicit wikiId for the LlamaIndex service.
         const wikiId = wikiSite;
