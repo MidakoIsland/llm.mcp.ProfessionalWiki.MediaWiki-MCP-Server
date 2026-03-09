@@ -4,53 +4,53 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 
 import { getPagesTool } from './get-pages.js';
 import { getPageHistoriesTool } from './get-page-histories.js';
-import { searchPageTool } from './search-page.js';
+import { searchPagesTool } from './search-pages.js';
 import { setWikiTool } from './set-wiki.js';
 import { addWikiTool } from './add-wiki.js';
 import { removeWikiTool } from './remove-wiki.js';
 import { updatePagesTool } from './update-pages.js';
-import { getFileTool } from './get-file.js';
+import { getFilesTool } from './get-files.js';
 import { createPagesTool } from './create-pages.js';
-import { uploadFileTool } from './upload-file.js';
-import { uploadFileFromUrlTool } from './upload-file-from-url.js';
+import { uploadFilesTool } from './upload-files.js';
+import { uploadFilesFromUrlTool } from './upload-files-from-url.js';
 import { deletePagesTool } from './delete-pages.js';
 import { getRevisionsTool } from './get-revisions.js';
 import { undeletePagesTool } from './undelete-pages.js';
 import { getCategoryMembersTool } from './get-category-members.js';
-import { searchPageByPrefixTool } from './search-page-by-prefix.js';
-import { searchPageByVectorTool } from './search-page-by-vector.js';
+import { searchPagesByPrefixTool } from './search-pages-by-prefix.js';
+import { searchPagesByVectorTool } from './search-pages-by-vector.js';
 import { getNamespacesTool } from './get-namespaces.js';
 import { createNamespaceTool } from './create-namespace.js';
 import { updateWikiTool } from './update-wiki.js';
 import { getCategoriesTool } from './get-categories.js';
 import { movePagesTool } from './move-pages.js';
-import { uploadFileFromStreamTool } from './upload-file-from-stream.js';
+import { uploadFilesFromStreamTool } from './upload-files-from-stream.js';
 import { updateVectorIndicesTool } from './update-vector-indices.js';
 
 const toolRegistrars = [
 	getPagesTool,
 	getPageHistoriesTool,
-	searchPageTool,
+	searchPagesTool,
 	setWikiTool,
 	addWikiTool,
 	removeWikiTool,
 	updatePagesTool,
-	getFileTool,
+	getFilesTool,
 	createPagesTool,
-	uploadFileTool,
-	uploadFileFromUrlTool,
+	uploadFilesTool,
+	uploadFilesFromUrlTool,
 	deletePagesTool,
 	getRevisionsTool,
 	undeletePagesTool,
 	getCategoryMembersTool,
-	searchPageByPrefixTool,
-	searchPageByVectorTool,
+	searchPagesByPrefixTool,
+	searchPagesByVectorTool,
 	getNamespacesTool,
 	createNamespaceTool,
 	updateWikiTool,
 	getCategoriesTool,
 	movePagesTool,
-	uploadFileFromStreamTool,
+	uploadFilesFromStreamTool,
 	updateVectorIndicesTool
 ];
 
