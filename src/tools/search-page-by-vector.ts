@@ -49,15 +49,15 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, num
     ensureWiki(wikiSite);
 
     try {
-        const vectorUrl = wikiService.getVectorServerUrl(wikiSite);
+        const vectorConfig = wikiService.getVectorServerConfig(wikiSite);
 
         // Shio: Use wikiSite as the implicit wikiId for the LlamaIndex service.
         const wikiId = wikiSite;
 
         // Ensure the URL is correctly formatted for search
-        const searchEndpoint = vectorUrl.endsWith('/search')
-            ? vectorUrl
-            : `${vectorUrl.replace(/\/$/, '')}/search`;
+        const searchEndpoint = vectorConfig.serverUrl.endsWith('/search')
+            ? vectorConfig.serverUrl
+            : `${vectorConfig.serverUrl.replace(/\/$/, '')}/search`;
 
         let searchUrl = `${searchEndpoint}?q=${encodeURIComponent(query)}&wiki_id=${encodeURIComponent(wikiId)}`;
 
@@ -68,7 +68,12 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, num
             searchUrl += `&snippet_length=${encodeURIComponent(snippetLength.toString())}`;
         }
 
-        const response = await fetch(searchUrl);
+        const headers: Record<string, string> = {};
+        if (vectorConfig.apiKey) {
+            headers['X-API-Key'] = vectorConfig.apiKey;
+        }
+
+        const response = await fetch(searchUrl, { headers });
 
         if (!response.ok) {
             throw new Error(`Vector service responded with status: ${response.status} ${response.statusText}`);

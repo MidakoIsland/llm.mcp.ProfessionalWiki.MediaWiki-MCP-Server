@@ -2,7 +2,8 @@ import {
 	WikiConfig,
 	PublicWikiConfig,
 	loadConfigFromFile,
-	saveConfigToFile
+	saveConfigToFile,
+	VectorServerConfig
 } from './config.js';
 
 type DeepReadonly<T> = {
@@ -80,23 +81,57 @@ function reset(): void {
 	currentWikiKey = undefined;
 }
 
-function getVectorServerUrl( wikiKey: string ): string {
+function getVectorServerConfig( wikiKey: string ): VectorServerConfig {
 	const wikiConfig = config.wikis[ wikiKey ];
 	if ( !wikiConfig ) {
 		throw new Error( `Wiki "${ wikiKey }" not found in configuration` );
 	}
 
-	// 1. Try to get it from the specific wiki config
-	if ( wikiConfig.vectorServerUrl && wikiConfig.vectorServerUrl.trim() !== '' ) {
-		return wikiConfig.vectorServerUrl;
+	const fallbackConfig = config.defaultVectorServerConfig;
+	const specificConfig = wikiConfig.vectorServerConfig;
+
+	if ( specificConfig && specificConfig.serverUrl && specificConfig.apiKey !== undefined ) {
+		return {
+			serverUrl: specificConfig.serverUrl,
+			apiKey: specificConfig.apiKey
+		};
 	}
 
-	// 2. Fallback to the global defaultVectorServerUrl
-	if ( config.defaultVectorServerUrl && config.defaultVectorServerUrl.trim() !== '' ) {
-		return config.defaultVectorServerUrl;
+	if ( specificConfig && specificConfig.serverUrl && specificConfig.apiKey === undefined ) {
+		// If specific wiki overrides the URL but not the key, and the URL matches the fallback URL,
+		// we can safely use the fallback key. Otherwise, we can't assume the fallback key is valid
+		// for a completely different server URL.
+		if ( fallbackConfig && fallbackConfig.serverUrl === specificConfig.serverUrl ) {
+			return {
+				serverUrl: specificConfig.serverUrl,
+				apiKey: fallbackConfig.apiKey || ''
+			};
+		}
+		// If it's a different server, default to empty API key
+		return {
+			serverUrl: specificConfig.serverUrl,
+			apiKey: ''
+		};
 	}
 
-	throw new Error( `No vectorServerUrl configured for wiki "${ wikiKey }" and no defaultVectorServerUrl found in global config.` );
+	if ( specificConfig && !specificConfig.serverUrl && specificConfig.apiKey !== undefined ) {
+		if ( fallbackConfig && fallbackConfig.serverUrl ) {
+			return {
+				serverUrl: fallbackConfig.serverUrl,
+				apiKey: specificConfig.apiKey
+			};
+		}
+		throw new Error( `Wiki "${ wikiKey }" configures an apiKey but no vector serverUrl is configured locally or globally.` );
+	}
+
+	if ( fallbackConfig && fallbackConfig.serverUrl ) {
+		return {
+			serverUrl: fallbackConfig.serverUrl,
+			apiKey: fallbackConfig.apiKey || ''
+		};
+	}
+
+	throw new Error( `No vectorServerConfig configured for wiki "${ wikiKey }" and no defaultVectorServerConfig found in global config.` );
 }
 
 export const wikiService = {
@@ -109,6 +144,6 @@ export const wikiService = {
 	setCurrent,
 	sanitize,
 	reset,
-	getVectorServerUrl
+	getVectorServerConfig
 };
 

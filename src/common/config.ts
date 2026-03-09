@@ -1,5 +1,10 @@
 import * as fs from 'fs';
 
+export interface VectorServerConfig {
+	serverUrl: string;
+	apiKey?: string;
+}
+
 export interface WikiConfig {
 	/**
 	 * Corresponds to the $wgSitename setting in MediaWiki.
@@ -35,22 +40,24 @@ export interface WikiConfig {
 	 */
 	private?: boolean;
 	/**
-	 * URL of the associated LlamaIndex Vector engine endpoint for this wiki.
-	 * E.g., http://127.0.0.1:5000/search
+	 * Configuration for the associated LlamaIndex Vector engine endpoint for this wiki.
 	 */
-	vectorServerUrl?: string | null;
+	vectorServerConfig?: Partial<VectorServerConfig>;
 }
 
 export type PublicWikiConfig = Omit<WikiConfig, 'token' | 'username' | 'password'>;
 
 export interface Config {
 	wikis: { [key: string]: WikiConfig };
-	defaultVectorServerUrl?: string;
+	defaultVectorServerConfig?: VectorServerConfig;
 }
 
 export const defaultConfig: Config = {
 	wikis: {},
-	defaultVectorServerUrl: 'http://127.0.0.1:5000/search'
+	defaultVectorServerConfig: {
+		serverUrl: 'http://127.0.0.1:5000/search',
+		apiKey: ''
+	}
 };
 const configPath = process.env.CONFIG || 'config.json';
 
