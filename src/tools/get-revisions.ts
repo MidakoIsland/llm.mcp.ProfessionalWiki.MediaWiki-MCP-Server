@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, makeRestGetRequest } from '../common/utils.js';
 import type { MwRestApiRevisionObject } from '../types/mwRestApi.js';
 import { ContentFormat, getSubEndpoint } from '../common/mwRestApiContentFormat.js';
 
@@ -31,45 +31,25 @@ export function getRevisionsTool( server: McpServer ): RegisteredTool {
 async function handleGetRevisionsTool(
 	revisions: { wikiSite: string; revisionId: number; content: ContentFormat; metadata: boolean }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const rev of revisions ) {
-		if ( rev.content === ContentFormat.none && !rev.metadata ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ rev.wikiSite }] Error for revision ${ rev.revisionId }: When content is set to "none", metadata must be true`
-			} );
-			continue;
-		}
-
-		try {
-			ensureWiki( rev.wikiSite );
+	return processBatchOperations(
+		revisions,
+		( rev ) => rev.wikiSite,
+		async ( rev ) => {
+			if ( rev.content === ContentFormat.none && !rev.metadata ) {
+				throw new Error( `When content is set to "none", metadata must be true` );
+			}
 			const data = await makeRestGetRequest<MwRestApiRevisionObject>(
+				rev.wikiSite,
 				`/v1/revision/${ rev.revisionId }${ getSubEndpoint( rev.content ) }`
 			);
-			
-			const revResults = getRevisionToolResult( data, rev.content, rev.metadata );
-			for ( const res of revResults ) {
-				results.push( {
-					type: 'text',
-					text: `[${ rev.wikiSite }] Revision ${ rev.revisionId }:\n${ res.text }`
-				} );
-			}
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ rev.wikiSite }] Failed to retrieve revision data for ${ rev.revisionId }: ${ ( error as Error ).message }`
-			} );
-		}
-	}
 
-	return {
-		content: results,
-		isError: hasError
-	};
+			const revResults = getRevisionToolResult( data, rev.content, rev.metadata );
+			return revResults.map( res => ( {
+				type: 'text' as const,
+				text: `[${ rev.wikiSite }] Revision ${ rev.revisionId }:\n${ res.text }`
+			} ) );
+		}
+	);
 }
 
 function getRevisionToolResult(

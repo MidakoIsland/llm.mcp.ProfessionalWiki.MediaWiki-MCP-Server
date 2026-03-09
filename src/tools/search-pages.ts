@@ -4,8 +4,8 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
 import { wikiService } from '../common/wikiService.js';
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
-import { ensureWiki } from '../common/utils.js';
 
 export function searchPagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -31,13 +31,11 @@ export function searchPagesTool( server: McpServer ): RegisteredTool {
 async function handleSearchPagesTool(
 	searches: { wikiSite: string; query: string; limit?: number; namespaces?: number[] }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const search of searches ) {
-		try {
-			ensureWiki( search.wikiSite );
-			const mwn = await getMwn();
+	return processBatchOperations(
+		searches,
+		( search ) => search.wikiSite,
+		async ( search ) => {
+			const mwn = await getMwn( search.wikiSite );
 			const params: Record<string, string | number> = {
 				action: 'query',
 				list: 'search',
@@ -53,39 +51,29 @@ async function handleSearchPagesTool(
 
 			const pages = data.query?.search || [];
 			if ( pages.length === 0 ) {
-				results.push( {
-					type: 'text',
+				return [ {
+					type: 'text' as const,
 					text: `[${ search.wikiSite }] No pages found for query "${ search.query }"`
-				} );
+				} ];
 			} else {
-				results.push( {
-					type: 'text',
+				return [ {
+					type: 'text' as const,
 					text: `[${ search.wikiSite }] Results for query "${ search.query }":\n` + 
 						pages.map( ( p: any ) => getSearchResultToolResult( search.wikiSite, p ) ).map( ( t: TextContent ) => t.text ).join( '\n\n' )
-				} );
+				} ];
 			}
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ search.wikiSite }] Failed to retrieve search data for query "${ search.query }": ${ ( error as Error ).message }`
-			} );
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getSearchResultToolResult( wikiSite: string, result: any ): TextContent {
-	const { server, articlepath, scriptpath } = wikiService.getCurrent().config;
+	const config = wikiService.get( wikiSite )!;
+	const { server, articlepath, scriptpath } = config;
 	const isRestUrl = articlepath === undefined; // fallback mechanism
 	const pageUrl = isRestUrl ? `${ server }${ scriptpath }/index.php?title=${ encodeURIComponent( result.title ) }` : `${ server }${ articlepath }/${ encodeURIComponent( result.title ) }`;
 	return {
-		type: 'text',
+		type: 'text' as const,
 		text: [
 			`Title: ${ result.title }`,
 			`Snippet: ${ result.snippet.replace( /<[^>]*>?/gm, '' ) }`, // Strip HTML tags like <span class="searchmatch">

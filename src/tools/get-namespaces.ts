@@ -3,8 +3,9 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
-import { ensureWiki } from '../common/utils.js';
+
 
 export function getNamespacesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -23,10 +24,8 @@ export function getNamespacesTool( server: McpServer ): RegisteredTool {
 }
 
 async function handleGetNamespacesTool( wikiSite: string ): Promise< CallToolResult > {
-	ensureWiki( wikiSite );
-
 	try {
-		const mwn = await getMwn();
+		const mwn = await getMwn( wikiSite );
 		const data = await mwn.request( {
 			action: 'bs-namespace-store'
 		} );

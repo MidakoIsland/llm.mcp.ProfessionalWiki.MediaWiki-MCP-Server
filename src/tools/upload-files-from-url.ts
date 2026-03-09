@@ -6,7 +6,7 @@ import type { ApiUploadParams } from 'types-mediawiki-api';
 /* eslint-enable n/no-missing-import */
 import type { ApiUploadResponse } from 'mwn';
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, formatEditComment } from '../common/utils.js';
 
 export function uploadFilesFromUrlTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -33,41 +33,26 @@ export function uploadFilesFromUrlTool( server: McpServer ): RegisteredTool {
 async function handleUploadFilesFromUrlTool(
 	files: { wikiSite: string; url: string; title: string; text: string; comment?: string }[]
 ): Promise< CallToolResult > {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const file of files ) {
-		try {
-			ensureWiki( file.wikiSite );
-			const mwn = await getMwn();
-			const data = await mwn.uploadFromUrl( file.url, file.title, file.text, getApiUploadParams( file.comment ) );
-			
-			results.push( {
-				type: 'text',
-				text: `[${ file.wikiSite }] File uploaded successfully from URL: ${ file.title }\nUpload details: ${ JSON.stringify( data, null, 2 ) }`
-			} );
-		} catch ( error ) {
-			hasError = true;
-			const errorMessage = ( error as Error ).message;
-
-			if ( errorMessage.includes( 'copyuploaddisabled' ) ) {
-				results.push( {
-					type: 'text',
-					text: `[${ file.wikiSite }] Upload failed for "${ file.title }": Upload by URL is disabled for this wiki. Please download the image from the URL to the local disk first, then use the upload-files tool to upload it from the local file path.`
-				} );
-			} else {
-				results.push( {
-					type: 'text',
-					text: `[${ file.wikiSite }] Failed to upload file "${ file.title }": ${ errorMessage }`
-				} );
+	return processBatchOperations(
+		files,
+		( file ) => file.wikiSite,
+		async ( file ) => {
+			try {
+				const mwn = await getMwn( file.wikiSite );
+				const data = await mwn.uploadFromUrl( file.url, file.title, file.text, getApiUploadParams( file.comment ) );
+				return [ {
+					type: 'text' as const,
+					text: `[${ file.wikiSite }] File uploaded successfully from URL: ${ file.title }\nUpload details: ${ JSON.stringify( data, null, 2 ) }`
+				} ];
+			} catch ( error ) {
+				const errorMessage = ( error as Error ).message;
+				if ( errorMessage.includes( 'copyuploaddisabled' ) ) {
+					throw new Error( `Upload by URL is disabled for this wiki. Please download the image from the URL to the local disk first, then use the upload-files tool to upload it from the local file path.` );
+				}
+				throw error;
 			}
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }
 
 function getApiUploadParams( comment?: string ): ApiUploadParams {

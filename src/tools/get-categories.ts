@@ -3,8 +3,9 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
-import { ensureWiki } from '../common/utils.js';
+
 
 export function getCategoriesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -25,10 +26,8 @@ export function getCategoriesTool( server: McpServer ): RegisteredTool {
 }
 
 async function handleGetCategoriesTool( wikiSite: string, limit: number, prefix?: string ): Promise< CallToolResult > {
-	ensureWiki( wikiSite );
-
 	try {
-		const mwn = await getMwn();
+		const mwn = await getMwn( wikiSite );
 		const params: Record<string, string | number> = {
 			action: 'query',
 			list: 'allcategories',

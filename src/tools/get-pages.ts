@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, makeRestGetRequest } from '../common/utils.js';
 import type { MwRestApiPageObject } from '../types/mwRestApi.js';
 import { ContentFormat, getSubEndpoint } from '../common/mwRestApiContentFormat.js';
 
@@ -31,47 +31,27 @@ export function getPagesTool( server: McpServer ): RegisteredTool {
 async function handleGetPagesTool(
 	pages: { wikiSite: string; title: string; content: ContentFormat; metadata: boolean }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
+	return processBatchOperations(
+		pages,
+		( page ) => page.wikiSite,
+		async ( page ) => {
+			if ( page.content === ContentFormat.none && !page.metadata ) {
+				throw new Error( 'When content is set to "none", metadata must be true' );
+			}
 
-	for ( const page of pages ) {
-		if ( page.content === ContentFormat.none && !page.metadata ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ page.wikiSite }] Error for page "${ page.title }": When content is set to "none", metadata must be true`
-			} );
-			continue;
-		}
-
-		try {
-			ensureWiki( page.wikiSite );
 			const data = await makeRestGetRequest<MwRestApiPageObject>(
+				page.wikiSite,
 				`/v1/page/${ encodeURIComponent( page.title ) }${ getSubEndpoint( page.content ) }`
 			);
-			
+
 			const pageResults = getPageToolResult( data, page.content, page.metadata );
-			for ( const res of pageResults ) {
-				results.push( {
-					type: 'text',
-					text: `[${ page.wikiSite }] Page: ${ page.title }\n${ res.text }`
-				} );
+			return pageResults.map( res => ( {
+				type: 'text' as const,
+				text: `[${ page.wikiSite }] Page: ${ page.title }\n${ res.text }`
+			} ) );
 			}
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ page.wikiSite }] Failed to retrieve page data for "${ page.title }": ${ ( error as Error ).message }`
-			} );
-		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
-}
-
+			);
+			}
 function getPageToolResult(
 	result: MwRestApiPageObject, content: ContentFormat, metadata: boolean
 ): TextContent[] {

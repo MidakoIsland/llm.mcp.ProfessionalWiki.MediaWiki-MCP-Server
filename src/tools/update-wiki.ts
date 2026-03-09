@@ -83,13 +83,7 @@ function handleUpdateWikiTool( server: McpServer, args: {
 
 		wikiService.update( args.wikiSite, updates );
 
-		try {
-			if ( wikiService.getCurrent().key === args.wikiSite ) {
-				clearMwnCache();
-			}
-		} catch {
-			// Ignore if there is no current wiki set
-		}
+		clearMwnCache( args.wikiSite );
 
 		server.sendResourceListChanged();
 

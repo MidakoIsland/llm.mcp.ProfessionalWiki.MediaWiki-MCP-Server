@@ -3,8 +3,9 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
-import { ensureWiki } from '../common/utils.js';
+
 
 export function createNamespaceTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -39,8 +40,6 @@ async function handleCreateNamespaceTool( args: {
 	pageassignmentsSecure: boolean;
 	readConfirmation: boolean;
 } ): Promise<CallToolResult> {
-	ensureWiki( args.wikiSite );
-
 	const taskData = {
 		name: args.name,
 		content: args.content,
@@ -53,7 +52,7 @@ async function handleCreateNamespaceTool( args: {
 	};
 
 	try {
-		const mwn = await getMwn();
+		const mwn = await getMwn( args.wikiSite );
 		const token = await mwn.getCsrfToken();
 
 		const data = await mwn.request( {

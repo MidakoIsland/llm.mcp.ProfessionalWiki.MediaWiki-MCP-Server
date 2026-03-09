@@ -4,7 +4,7 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, formatEditComment } from '../common/utils.js';
 
 export function undeletePagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -29,30 +29,16 @@ export function undeletePagesTool( server: McpServer ): RegisteredTool {
 async function handleUndeletePagesTool(
 	pages: { wikiSite: string; title: string; comment?: string }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const page of pages ) {
-		try {
-			ensureWiki( page.wikiSite );
-			const mwn = await getMwn();
+	return processBatchOperations(
+		pages,
+		( page ) => page.wikiSite,
+		async ( page ) => {
+			const mwn = await getMwn( page.wikiSite );
 			const data = await mwn.undelete( page.title, formatEditComment( 'undelete-pages', page.comment ) );
-			
-			results.push( {
+			return [ {
 				type: 'text',
 				text: `[${ page.wikiSite }] Page undeleted successfully: ${ data.title }`
-			} );
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ page.wikiSite }] Failed to undelete page "${ page.title }": ${ ( error as Error ).message }`
-			} );
+			} ];
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }

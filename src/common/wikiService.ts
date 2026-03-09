@@ -3,7 +3,8 @@ import {
 	PublicWikiConfig,
 	loadConfigFromFile,
 	saveConfigToFile,
-	VectorServerConfig
+	VectorServerConfig,
+	Config
 } from './config.js';
 
 type DeepReadonly<T> = {
@@ -11,8 +12,6 @@ type DeepReadonly<T> = {
 };
 
 const config = loadConfigFromFile();
-
-let currentWikiKey: string | undefined;
 
 function sanitize( wikiConfig: DeepReadonly<WikiConfig> ): PublicWikiConfig {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -58,27 +57,6 @@ function update( key: string, wikiConfig: Partial<WikiConfig> ): void {
 function remove( key: string ): void {
 	delete config.wikis[ key ];
 	saveConfigToFile( config );
-}
-
-function getCurrent(): { key: string; config: DeepReadonly<WikiConfig> } {
-	if ( !currentWikiKey ) {
-		throw new Error( 'No active wiki set. You must provide a valid wikiSite.' );
-	}
-	return {
-		key: currentWikiKey,
-		config: config.wikis[ currentWikiKey ] as DeepReadonly<WikiConfig>
-	};
-}
-
-function setCurrent( key: string ): void {
-	if ( !config.wikis[ key ] ) {
-		throw new Error( `Wiki "${ key }" not found in config.json` );
-	}
-	currentWikiKey = key;
-}
-
-function reset(): void {
-	currentWikiKey = undefined;
 }
 
 function getFullConfig(): Config {
@@ -144,10 +122,7 @@ export const wikiService = {
 	add,
 	update,
 	remove,
-	getCurrent,
-	setCurrent,
 	sanitize,
-	reset,
 	getVectorServerConfig,
 	getFullConfig
 };

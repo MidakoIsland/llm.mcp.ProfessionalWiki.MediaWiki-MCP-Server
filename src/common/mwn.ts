@@ -2,11 +2,18 @@ import { USER_AGENT } from '../server.js';
 import { wikiService } from './wikiService.js';
 import { Mwn, MwnOptions } from 'mwn';
 
-let mwnInstance: Mwn | null = null;
+// Shio: Cache Mwn instances by wikiSite key so we don't Thrash instances when
+// the agent accesses multiple wikis in a single batch operation.
+const mwnInstances = new Map<string, Mwn>();
 
-export async function getMwn(): Promise<Mwn> {
-	if ( mwnInstance ) {
-		return mwnInstance;
+export async function getMwn( wikiSite: string ): Promise<Mwn> {
+	if ( mwnInstances.has( wikiSite ) ) {
+		return mwnInstances.get( wikiSite )!;
+	}
+
+	const wikiConfig = wikiService.get( wikiSite );
+	if ( !wikiConfig ) {
+		throw new Error( `Wiki "${ wikiSite }" not found in configuration` );
 	}
 
 	const {
@@ -15,12 +22,14 @@ export async function getMwn(): Promise<Mwn> {
 		token,
 		username,
 		password
-	} = wikiService.getCurrent().config;
+	} = wikiConfig;
 
 	const options: MwnOptions = {
 		apiUrl: `${ server }${ scriptpath }/api.php`,
 		userAgent: USER_AGENT
 	};
+
+	let mwnInstance: Mwn;
 
 	if ( token ) {
 		options.OAuth2AccessToken = token;
@@ -34,9 +43,14 @@ export async function getMwn(): Promise<Mwn> {
 		await mwnInstance.getSiteInfo();
 	}
 
+	mwnInstances.set( wikiSite, mwnInstance );
 	return mwnInstance;
 }
 
-export function clearMwnCache(): void {
-	mwnInstance = null;
+export function clearMwnCache( wikiSite?: string ): void {
+	if ( wikiSite ) {
+		mwnInstances.delete( wikiSite );
+	} else {
+		mwnInstances.clear();
+	}
 }

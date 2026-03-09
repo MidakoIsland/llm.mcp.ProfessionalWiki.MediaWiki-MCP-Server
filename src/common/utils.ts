@@ -18,16 +18,6 @@ export async function processBatchOperations<T>(
 	if ( allowConcurrent ) {
 		const promises = items.map( async ( item ) => {
 			try {
-				const wikiSite = getWikiSite( item );
-				// We still ensureWiki to catch basic config missing errors,
-				// but mwn instance switching in concurrent mode might be tricky
-				// if ensureWiki relies on a global currentWikiKey. 
-				// However, getMwn() now uses wikiService.getCurrent() inside it.
-				// This implies a fundamental race condition in the architecture 
-				// if multiple wikis are accessed concurrently because wikiService 
-				// uses a global `currentWikiKey`. 
-				// For now, if concurrent is enabled, we assume it's mostly same-wiki.
-				ensureWiki( wikiSite );
 				const res = await processItem( item );
 				return { success: true, res };
 			} catch ( error ) {
@@ -50,7 +40,6 @@ export async function processBatchOperations<T>(
 	} else {
 		for ( const item of items ) {
 			try {
-				ensureWiki( getWikiSite( item ) );
 				const res = await processItem( item );
 				results.push( ...res );
 			} catch ( error ) {
@@ -68,31 +57,22 @@ export async function processBatchOperations<T>(
 	return { content: results, isError: hasError };
 }
 
-export function ensureWiki( wikiSite: string ): void {
-	let currentWiki: string | undefined;
-	try {
-		currentWiki = wikiService.getCurrent().key;
-	} catch {
-		currentWiki = undefined;
-	}
-
-	if ( currentWiki !== wikiSite ) {
-		wikiService.setCurrent( wikiSite );
-		clearMwnCache();
-	}
-}
-
 type RequestConfig = {
 	headers: Record<string, string>;
 	body: Record<string, unknown> | undefined;
 };
 
 async function withAuth(
+	wikiSite: string,
 	headers: Record<string, string>,
 	body: Record<string, unknown> | undefined,
 	needAuth: boolean
 ): Promise<RequestConfig> {
-	const { private: privateWiki, token } = wikiService.getCurrent().config;
+	const config = wikiService.get( wikiSite );
+	if ( !config ) {
+		throw new Error( `Wiki configuration not found for: ${ wikiSite }` );
+	}
+	const { private: privateWiki, token } = config;
 
 	if ( !needAuth && !privateWiki ) {
 		return { headers, body };
@@ -107,30 +87,31 @@ async function withAuth(
 	}
 
 	// Cookie-based authentication - add cookies and CSRF token
-	const cookies = await getCookiesFromJar();
+	const cookies = await getCookiesFromJar( wikiSite );
 	if ( cookies === undefined ) {
 		return { headers, body };
 	}
 
 	return {
 		headers: { ...headers, Cookie: cookies },
-		body: body ? { ...body, token: await getCsrfToken() } : body
+		body: body ? { ...body, token: await getCsrfToken( wikiSite ) } : body
 	};
 }
 
-async function getCsrfToken(): Promise<string> {
-	const mwn = await getMwn();
+async function getCsrfToken( wikiSite: string ): Promise<string> {
+	const mwn = await getMwn( wikiSite );
 	return await mwn.getCsrfToken();
 }
 
-async function getCookiesFromJar(): Promise<string | undefined> {
-	const mwn = await getMwn();
+async function getCookiesFromJar( wikiSite: string ): Promise<string | undefined> {
+	const mwn = await getMwn( wikiSite );
 	const cookieJar = mwn.cookieJar;
 	if ( !cookieJar ) {
 		return undefined;
 	}
 
-	const { server, scriptpath } = wikiService.getCurrent().config;
+	const config = wikiService.get( wikiSite )!;
+	const { server, scriptpath } = config;
 
 	// Get cookies for the REST API URL
 	const restApiUrl = `${ server }${ scriptpath }/rest.php`;
@@ -144,8 +125,6 @@ async function getCookiesFromJar(): Promise<string | undefined> {
 	return cookieJar.getCookieStringSync( server ) || undefined;
 }
 
-// Shio: Custom error class to carry the HTTP status code from fetchCore.
-// This allows caller functions to make retry decisions based on specific HTTP errors.
 export class FetchError extends Error {
 	public status: number;
 	public constructor( message: string, status: number ) {
@@ -155,19 +134,13 @@ export class FetchError extends Error {
 	}
 }
 
-// Shio: A wrapper function that intercepts 401 Unauthorized or 403 Forbidden errors
-// from the underlying REST API requests. When a session expires during a long-running
-// MCP server instance, MediaWiki returns these status codes for private wiki access.
-// Since these custom REST API functions bypass mwn's native automatic re-login logic,
-// we manually catch the auth failures, invalidate the mwn instance cache, and retry.
-// The next getMwn() call will perform a fresh login and obtain valid session cookies.
-async function withRestRetry<T>( requestFn: () => Promise<T> ): Promise<T> {
+async function withRestRetry<T>( wikiSite: string, requestFn: () => Promise<T> ): Promise<T> {
 	try {
 		return await requestFn();
 	} catch ( error ) {
 		if ( error instanceof FetchError && ( error.status === 401 || error.status === 403 ) ) {
 			// Clear mwn cache to force re-authentication and get fresh cookies
-			clearMwnCache();
+			clearMwnCache( wikiSite );
 			return await requestFn();
 		}
 		throw error;
@@ -234,22 +207,25 @@ export async function makeApiRequest<T>(
 }
 
 export async function makeRestGetRequest<T>(
+	wikiSite: string,
 	path: string,
 	params?: Record<string, string>,
 	needAuth: boolean = false
 ): Promise<T> {
-	return withRestRetry( async () => {
+	return withRestRetry( wikiSite, async () => {
 		const headers: Record<string, string> = {
 			Accept: 'application/json'
 		};
 
 		const { headers: authHeaders } = await withAuth(
+			wikiSite,
 			headers,
 			undefined,
 			needAuth
 		);
 
-		const { server, scriptpath } = wikiService.getCurrent().config;
+		const config = wikiService.get( wikiSite )!;
+		const { server, scriptpath } = config;
 
 		const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
 			params,
@@ -260,23 +236,26 @@ export async function makeRestGetRequest<T>(
 }
 
 export async function makeRestPutRequest<T>(
+	wikiSite: string,
 	path: string,
 	body: Record<string, unknown>,
 	needAuth: boolean = false
 ): Promise<T> {
-	return withRestRetry( async () => {
+	return withRestRetry( wikiSite, async () => {
 		const headers: Record<string, string> = {
 			Accept: 'application/json',
 			'Content-Type': 'application/json'
 		};
 
 		const { headers: authHeaders, body: authBody } = await withAuth(
+			wikiSite,
 			headers,
 			body,
 			needAuth
 		);
 
-		const { server, scriptpath } = wikiService.getCurrent().config;
+		const config = wikiService.get( wikiSite )!;
+		const { server, scriptpath } = config;
 
 		const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
 			headers: authHeaders,
@@ -288,23 +267,26 @@ export async function makeRestPutRequest<T>(
 }
 
 export async function makeRestPostRequest<T>(
+	wikiSite: string,
 	path: string,
 	body?: Record<string, unknown>,
 	needAuth: boolean = false
 ): Promise<T> {
-	return withRestRetry( async () => {
+	return withRestRetry( wikiSite, async () => {
 		const headers: Record<string, string> = {
 			Accept: 'application/json',
 			'Content-Type': 'application/json'
 		};
 
 		const { headers: authHeaders, body: authBody } = await withAuth(
+			wikiSite,
 			headers,
 			body,
 			needAuth
 		);
 
-		const { server, scriptpath } = wikiService.getCurrent().config;
+		const config = wikiService.get( wikiSite )!;
+		const { server, scriptpath } = config;
 
 		const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
 			headers: authHeaders,
@@ -335,9 +317,12 @@ export async function fetchImageAsBase64( url: string ): Promise<string | null> 
 	}
 }
 
-export function getPageUrl( title: string ): string {
-	const { server, articlepath } = wikiService.getCurrent().config;
-	return `${ server }${ articlepath }/${ encodeURIComponent( title ) }`;
+export function getPageUrl( wikiSite: string, title: string ): string {
+	const config = wikiService.get( wikiSite );
+	if ( !config ) {
+		return title; // Fallback if misconfigured
+	}
+	return `${ config.server }${ config.articlepath }/${ encodeURIComponent( title ) }`;
 }
 
 export function formatEditComment( tool: string, comment?: string ): string {

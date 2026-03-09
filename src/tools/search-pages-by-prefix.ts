@@ -4,8 +4,8 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ApiQueryAllPagesParams } from 'types-mediawiki-api';
 /* eslint-enable n/no-missing-import */
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
-import { ensureWiki } from '../common/utils.js';
 
 export function searchPagesByPrefixTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -31,13 +31,11 @@ export function searchPagesByPrefixTool( server: McpServer ): RegisteredTool {
 async function handleSearchPagesByPrefixTool(
 	searches: { wikiSite: string; prefix: string; limit?: number; namespace?: number }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const search of searches ) {
-		try {
-			ensureWiki( search.wikiSite );
-			const mwn = await getMwn();
+	return processBatchOperations(
+		searches,
+		( search ) => search.wikiSite,
+		async ( search ) => {
+			const mwn = await getMwn( search.wikiSite );
 			const options: ApiQueryAllPagesParams = {};
 
 			if ( search.limit ) {
@@ -50,28 +48,17 @@ async function handleSearchPagesByPrefixTool(
 			const data = await mwn.getPagesByPrefix( search.prefix, options );
 
 			if ( data.length === 0 ) {
-				results.push( {
-					type: 'text',
+				return [ {
+					type: 'text' as const,
 					text: `[${ search.wikiSite }] No pages found with the prefix "${ search.prefix }"`
-				} );
+				} ];
 			} else {
-				results.push( {
-					type: 'text',
+				return [ {
+					type: 'text' as const,
 					text: `[${ search.wikiSite }] Prefix matches for "${ search.prefix }":\n` + 
 						data.join( '\n' )
-				} );
+				} ];
 			}
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ search.wikiSite }] Failed to retrieve search data for prefix "${ search.prefix }": ${ ( error as Error ).message }`
-			} );
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }

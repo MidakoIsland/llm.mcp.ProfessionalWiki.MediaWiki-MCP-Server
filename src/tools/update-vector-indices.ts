@@ -3,8 +3,9 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
-import { ensureWiki } from '../common/utils.js';
+
 
 export function updateVectorIndicesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -45,17 +46,18 @@ async function handleUpdateVectorIndicesTool(
 		pagesByWiki.set( page.wikiSite, titles );
 	}
 
-	const results: TextContent[] = [];
-	let hasError = false;
+	const batchRequests = Array.from( pagesByWiki.entries() ).map( ( [ wikiSite, titles ] ) => ( { wikiSite, titles } ) );
 
-	for ( const [ wikiSite, titles ] of pagesByWiki.entries() ) {
-		try {
-			ensureWiki( wikiSite );
-			const mwn = await getMwn();
+	return processBatchOperations(
+		batchRequests,
+		( req ) => req.wikiSite,
+		async ( req ) => {
+			const mwn = await getMwn( req.wikiSite );
 			const token = await mwn.getCsrfToken();
 
 			// The midako-index API has a multi limit of 500. We chunk at 500 just to be safe.
-			const titleChunks = chunkArray( titles, 500 );
+			const titleChunks = chunkArray( req.titles, 500 );
+			const results: TextContent[] = [];
 
 			for ( const chunk of titleChunks ) {
 				const response = await mwn.request( {
@@ -66,20 +68,10 @@ async function handleUpdateVectorIndicesTool(
 
 				results.push( {
 					type: 'text',
-					text: `[${ wikiSite }] Successfully triggered indexing for ${ chunk.length } pages.\nResponse: ${ JSON.stringify( response['midako-index'], null, 2 ) }`
+					text: `[${ req.wikiSite }] Successfully triggered indexing for ${ chunk.length } pages.\nResponse: ${ JSON.stringify( response['midako-index'], null, 2 ) }`
 				} );
 			}
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ wikiSite }] Failed to trigger indexing: ${ ( error as Error ).message }`
-			} );
+			return results;
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }

@@ -4,7 +4,7 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, formatEditComment } from '../common/utils.js';
 
 export function movePagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -32,33 +32,19 @@ export function movePagesTool( server: McpServer ): RegisteredTool {
 async function handleMovePagesTool(
 	pages: { wikiSite: string; fromTitle: string; toTitle: string; reason?: string; noredirect?: boolean; movesubpages?: boolean }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const page of pages ) {
-		try {
-			ensureWiki( page.wikiSite );
-			const mwn = await getMwn();
+	return processBatchOperations(
+		pages,
+		( page ) => page.wikiSite,
+		async ( page ) => {
+			const mwn = await getMwn( page.wikiSite );
 			const data = await mwn.move( page.fromTitle, page.toTitle, formatEditComment( 'move-pages', page.reason ), {
 				noredirect: page.noredirect,
 				movesubpages: page.movesubpages
 			} );
-
-			results.push( {
+			return [ {
 				type: 'text',
 				text: `[${ page.wikiSite }] Page successfully moved from "${ data.from }" to "${ data.to }".`
-			} );
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ page.wikiSite }] Failed to move page "${ page.fromTitle }": ${ ( error as Error ).message }`
-			} );
+			} ];
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }

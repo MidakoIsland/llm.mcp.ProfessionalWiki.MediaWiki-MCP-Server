@@ -5,7 +5,6 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import { getPagesTool } from './get-pages.js';
 import { getPageHistoriesTool } from './get-page-histories.js';
 import { searchPagesTool } from './search-pages.js';
-import { setWikiTool } from './set-wiki.js';
 import { addWikiTool } from './add-wiki.js';
 import { removeWikiTool } from './remove-wiki.js';
 import { updatePagesTool } from './update-pages.js';
@@ -31,7 +30,6 @@ const toolRegistrars = [
 	getPagesTool,
 	getPageHistoriesTool,
 	searchPagesTool,
-	setWikiTool,
 	addWikiTool,
 	removeWikiTool,
 	updatePagesTool,

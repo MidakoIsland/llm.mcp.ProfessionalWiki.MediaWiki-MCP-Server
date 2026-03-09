@@ -4,7 +4,8 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
 import { wikiService } from '../common/wikiService.js';
-import { ensureWiki } from '../common/utils.js';
+
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
 
 export function searchPagesByVectorTool(server: McpServer): RegisteredTool {
@@ -50,12 +51,10 @@ interface PageData {
 async function handleSearchPagesByVectorTool(
     searches: { wikiSite: string; query: string; numSnippets?: number; snippetLength?: number }[]
 ): Promise<CallToolResult> {
-    const finalResults: TextContent[] = [];
-    let hasError = false;
-
-    for (const search of searches) {
-        try {
-            ensureWiki(search.wikiSite);
+    return processBatchOperations(
+        searches,
+        ( search ) => search.wikiSite,
+        async ( search ) => {
             const vectorConfig = wikiService.getVectorServerConfig(search.wikiSite);
 
             // Shio: Use wikiSite as the implicit wikiId for the LlamaIndex service.
@@ -96,7 +95,7 @@ async function handleSearchPagesByVectorTool(
 
             if (results.length > 0) {
                 // Shio: Verify wiki permissions and fetch metadata.
-                const mwn = await getMwn();
+                const mwn = await getMwn(search.wikiSite);
                 const uniqueTitles = [...new Set<string>(results.map((r: any) => r.metadata?.title).filter(Boolean))];
 
                 if (uniqueTitles.length > 0) {
@@ -129,30 +128,19 @@ async function handleSearchPagesByVectorTool(
             }
 
             if (results.length === 0) {
-                finalResults.push({
-                    type: 'text',
+                return [{
+                    type: 'text' as const,
                     text: `[${search.wikiSite}] No semantic matches found for "${search.query}"`
-                });
+                }];
             } else {
-                finalResults.push({
-                    type: 'text',
+                return [{
+                    type: 'text' as const,
                     text: `[${search.wikiSite}] Semantic matches for "${search.query}":\n` +
                         results.map((r: any) => getVectorSearchResultToolResult(search.wikiSite, r)).map((t: TextContent) => t.text).join('\n\n')
-                });
+                }];
             }
-        } catch (error) {
-            hasError = true;
-            finalResults.push({
-                type: 'text',
-                text: `[${search.wikiSite}] Failed to query vector store for "${search.query}": ${(error as Error).message}`
-            });
         }
-    }
-
-    return {
-        content: finalResults,
-        isError: hasError
-    };
+    );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,7 +149,8 @@ function getVectorSearchResultToolResult(wikiSite: string, result: any): TextCon
     const mwData: PageData | undefined = result._mwData;
     
     // Fallback URL generation if mwData is somehow missing
-    const { server, articlepath, scriptpath } = wikiService.getCurrent().config;
+    const config = wikiService.get(wikiSite)!;
+    const { server, articlepath, scriptpath } = config;
     const isRestUrl = articlepath === undefined;
     const fallbackUrl = isRestUrl ? `${server}${scriptpath}/index.php?title=${encodeURIComponent(metadataTitle)}` : `${server}${articlepath}/${encodeURIComponent(metadataTitle)}`;
 
@@ -175,7 +164,7 @@ function getVectorSearchResultToolResult(wikiSite: string, result: any): TextCon
     }
 
     return {
-        type: 'text',
+        type: 'text' as const,
         text: [
             `Score: ${(result.score).toFixed(4)}`,
             `Title: ${metadataTitle}`,

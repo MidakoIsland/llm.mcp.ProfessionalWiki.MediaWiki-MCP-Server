@@ -4,7 +4,7 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, formatEditComment } from '../common/utils.js';
 
 export function deletePagesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -29,30 +29,16 @@ export function deletePagesTool( server: McpServer ): RegisteredTool {
 async function handleDeletePagesTool(
 	pages: { wikiSite: string; title: string; comment?: string }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const page of pages ) {
-		try {
-			ensureWiki( page.wikiSite );
-			const mwn = await getMwn();
+	return processBatchOperations(
+		pages,
+		( page ) => page.wikiSite,
+		async ( page ) => {
+			const mwn = await getMwn( page.wikiSite );
 			const data = await mwn.delete( page.title, formatEditComment( 'delete-pages', page.comment ) );
-			
-			results.push( {
+			return [ {
 				type: 'text',
 				text: `[${ page.wikiSite }] Page deleted successfully: ${ data.title }`
-			} );
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ page.wikiSite }] Failed to delete page "${ page.title }": ${ ( error as Error ).message }`
-			} );
+			} ];
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }

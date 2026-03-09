@@ -6,7 +6,7 @@ import type { ApiUploadParams } from 'types-mediawiki-api';
 /* eslint-enable n/no-missing-import */
 import type { ApiUploadResponse } from 'mwn';
 import { getMwn } from '../common/mwn.js';
-import { formatEditComment, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, formatEditComment } from '../common/utils.js';
 
 export function uploadFilesTool( server: McpServer ): RegisteredTool {
 	return server.tool(
@@ -33,32 +33,18 @@ export function uploadFilesTool( server: McpServer ): RegisteredTool {
 async function handleUploadFilesTool(
 	files: { wikiSite: string; filepath: string; title: string; text: string; comment?: string }[]
 ): Promise< CallToolResult > {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const file of files ) {
-		try {
-			ensureWiki( file.wikiSite );
-			const mwn = await getMwn();
+	return processBatchOperations(
+		files,
+		( file ) => file.wikiSite,
+		async ( file ) => {
+			const mwn = await getMwn( file.wikiSite );
 			const data = await mwn.upload( file.filepath, file.title, file.text, getApiUploadParams( file.comment ) );
-			
-			results.push( {
+			return [ {
 				type: 'text',
 				text: `[${ file.wikiSite }] File uploaded successfully: ${ file.title }\nUpload details: ${ JSON.stringify( data, null, 2 ) }`
-			} );
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ file.wikiSite }] Failed to upload file "${ file.title }": ${ ( error as Error ).message }`
-			} );
+			} ];
 		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
+	);
 }
 
 function getApiUploadParams( comment?: string ): ApiUploadParams {

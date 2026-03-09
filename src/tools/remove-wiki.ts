@@ -37,19 +37,9 @@ async function handleRemoveWikiTool( server: McpServer, uri: string ): Promise<C
 			};
 		}
 
-		if ( wikiService.getCurrent().key === wikiKey ) {
-			return {
-				content: [ {
-					type: 'text',
-					text: 'Cannot remove the currently active wiki. Please set a different wiki as the active wiki before removing this one.'
-				} as TextContent ],
-				isError: true
-			};
-		}
-
 		wikiService.remove( wikiKey );
 		server.sendResourceListChanged();
-		clearMwnCache();
+		clearMwnCache( wikiKey );
 
 		return {
 			content: [ {

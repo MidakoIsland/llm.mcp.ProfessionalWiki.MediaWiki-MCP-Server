@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, makeRestGetRequest } from '../common/utils.js';
 import type { MwRestApiGetPageHistoryResponse, MwRestApiRevisionObject } from '../types/mwRestApi.js';
 
 export function getPageHistoriesTool( server: McpServer ): RegisteredTool {
@@ -31,55 +31,42 @@ export function getPageHistoriesTool( server: McpServer ): RegisteredTool {
 async function handleGetPageHistoriesTool(
 	pages: { wikiSite: string; title: string; olderThan?: number; newerThan?: number; filter?: string }[]
 ): Promise<CallToolResult> {
-	const results: TextContent[] = [];
-	let hasError = false;
+	return processBatchOperations(
+		pages,
+		( page ) => page.wikiSite,
+		async ( page ) => {
+			const params: Record<string, string> = {};
+			if ( page.olderThan ) {
+				params.olderThan = page.olderThan.toString();
+			}
+			if ( page.newerThan ) {
+				params.newerThan = page.newerThan.toString();
+			}
+			if ( page.filter ) {
+				params.filter = page.filter;
+			}
 
-	for ( const page of pages ) {
-		const params: Record<string, string> = {};
-		if ( page.olderThan ) {
-			params.olderThan = page.olderThan.toString();
-		}
-		if ( page.newerThan ) {
-			params.newerThan = page.newerThan.toString();
-		}
-		if ( page.filter ) {
-			params.filter = page.filter;
-		}
-
-		try {
-			ensureWiki( page.wikiSite );
 			const data = await makeRestGetRequest<MwRestApiGetPageHistoryResponse>(
+				page.wikiSite,
 				`/v1/page/${ encodeURIComponent( page.title ) }/history`,
 				params
 			);
 
 			if ( data.revisions.length === 0 ) {
-				results.push( {
+				return [ {
 					type: 'text',
 					text: `[${ page.wikiSite }] No revisions found for page "${ page.title }"`
-				} );
+				} ];
 			} else {
-				results.push( {
+				return [ {
 					type: 'text',
 					text: `[${ page.wikiSite }] History for page "${ page.title }":\n` + 
 						data.revisions.map( getPageHistoryToolResult ).map( t => t.text ).join( '\n\n' )
-				} );
+				} ];
 			}
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ page.wikiSite }] Failed to retrieve page history for "${ page.title }": ${ ( error as Error ).message }`
-			} );
-		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
-}
-
+			}
+			);
+			}
 function getPageHistoryToolResult( result: MwRestApiRevisionObject ): TextContent {
 	return {
 		type: 'text',

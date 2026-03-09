@@ -5,8 +5,9 @@ import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontext
 import type { ApiQueryCategoryMembersParams } from 'types-mediawiki-api';
 /* eslint-enable n/no-missing-import */
 import type { ApiPageInfo } from '../types/mwn.ts';
+import { processBatchOperations } from '../common/utils.js';
 import { getMwn } from '../common/mwn.js';
-import { ensureWiki } from '../common/utils.js';
+
 
 enum CategoryMemberType {
 	file = 'file',
@@ -38,11 +39,9 @@ export function getCategoryMembersTool( server: McpServer ): RegisteredTool {
 async function handleGetCategoryMembersTool(
 	wikiSite: string, category: string, types?: CategoryMemberType[], namespaces?: number[]
 ): Promise< CallToolResult > {
-	ensureWiki( wikiSite );
-
 	let data: ApiPageInfo[];
 	try {
-		const mwn = await getMwn();
+		const mwn = await getMwn( wikiSite );
 		const mwnCategory = new mwn.Category( category );
 
 		const options: ApiQueryCategoryMembersParams = {};

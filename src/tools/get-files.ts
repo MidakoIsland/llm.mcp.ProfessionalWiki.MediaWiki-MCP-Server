@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 /* eslint-enable n/no-missing-import */
-import { makeRestGetRequest, ensureWiki } from '../common/utils.js';
+import { processBatchOperations, makeRestGetRequest } from '../common/utils.js';
 import type { MwRestApiFileObject } from '../types/mwRestApi.js';
 
 export function getFilesTool( server: McpServer ): RegisteredTool {
@@ -28,33 +28,18 @@ export function getFilesTool( server: McpServer ): RegisteredTool {
 async function handleGetFilesTool(
 	files: { wikiSite: string; title: string }[]
 ): Promise< CallToolResult > {
-	const results: TextContent[] = [];
-	let hasError = false;
-
-	for ( const file of files ) {
-		try {
-			ensureWiki( file.wikiSite );
-			const data = await makeRestGetRequest<MwRestApiFileObject>( `/v1/file/${ encodeURIComponent( file.title ) }` );
-			
-			results.push( {
+	return processBatchOperations(
+		files,
+		( file ) => file.wikiSite,
+		async ( file ) => {
+			const data = await makeRestGetRequest<MwRestApiFileObject>( file.wikiSite, `/v1/file/${ encodeURIComponent( file.title ) }` );
+			return [ {
 				type: 'text',
 				text: `[${ file.wikiSite }] File: ${ file.title }\n` + getFileToolResult( data ).map( t => t.text ).join( '\n' )
-			} );
-		} catch ( error ) {
-			hasError = true;
-			results.push( {
-				type: 'text',
-				text: `[${ file.wikiSite }] Failed to retrieve file data for "${ file.title }": ${ ( error as Error ).message }`
-			} );
-		}
-	}
-
-	return {
-		content: results,
-		isError: hasError
-	};
-}
-
+			} ];
+			}
+			);
+			}
 function getFileToolResult( result: MwRestApiFileObject ): TextContent[] {
 	return [
 		{
