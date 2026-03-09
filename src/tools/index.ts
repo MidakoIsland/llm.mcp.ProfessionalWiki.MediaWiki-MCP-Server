@@ -25,6 +25,7 @@ import { updateWikiTool } from './update-wiki.js';
 import { getCategoriesTool } from './get-categories.js';
 import { movePageTool } from './move-page.js';
 import { uploadFileFromStreamTool } from './upload-file-from-stream.js';
+import { updateVectorIndicesTool } from './update-vector-indices.js';
 
 const toolRegistrars = [
 	getPageTool,
@@ -49,7 +50,8 @@ const toolRegistrars = [
 	updateWikiTool,
 	getCategoriesTool,
 	movePageTool,
-	uploadFileFromStreamTool
+	uploadFileFromStreamTool,
+	updateVectorIndicesTool
 ];
 
 export function registerAllTools( server: McpServer ): RegisteredTool[] {

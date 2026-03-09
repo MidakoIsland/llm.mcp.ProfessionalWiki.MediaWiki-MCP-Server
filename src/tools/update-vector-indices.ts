@@ -1,0 +1,85 @@
+import { z } from 'zod';
+/* eslint-disable n/no-missing-import */
+import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CallToolResult, TextContent, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+/* eslint-enable n/no-missing-import */
+import { getMwn } from '../common/mwn.js';
+import { ensureWiki } from '../common/utils.js';
+
+export function updateVectorIndicesTool( server: McpServer ): RegisteredTool {
+	return server.tool(
+		'update-vector-indices',
+		'Triggers a re-indexing of the specified wiki pages in the vector database.',
+		{
+			pages: z.array( z.object( {
+				wikiSite: z.string().describe( 'The name of the wiki site to interact with (e.g. en.wikipedia.org)' ),
+				title: z.string().describe( 'Wiki page title to re-index' )
+			} ) ).describe( 'List of pages to re-index across one or more wikis' )
+		},
+		{
+			title: 'Update vector indices',
+			readOnlyHint: false,
+			destructiveHint: false
+		} as ToolAnnotations,
+		async ( { pages } ) => handleUpdateVectorIndicesTool( pages )
+	);
+}
+
+// Helper to split array into smaller chunks
+function chunkArray<T>( array: T[], size: number ): T[][] {
+	const chunked: T[][] = [];
+	for ( let i = 0; i < array.length; i += size ) {
+		chunked.push( array.slice( i, i + size ) );
+	}
+	return chunked;
+}
+
+async function handleUpdateVectorIndicesTool(
+	pages: { wikiSite: string; title: string }[]
+): Promise<CallToolResult> {
+	// Group pages by wikiSite
+	const pagesByWiki = new Map<string, string[]>();
+	for ( const page of pages ) {
+		const titles = pagesByWiki.get( page.wikiSite ) || [];
+		titles.push( page.title );
+		pagesByWiki.set( page.wikiSite, titles );
+	}
+
+	const results: TextContent[] = [];
+	let hasError = false;
+
+	for ( const [ wikiSite, titles ] of pagesByWiki.entries() ) {
+		try {
+			ensureWiki( wikiSite );
+			const mwn = await getMwn();
+			const token = await mwn.getCsrfToken();
+
+			// The midako-index API has a multi limit of 500. We chunk at 500 just to be safe.
+			const titleChunks = chunkArray( titles, 500 );
+
+			for ( const chunk of titleChunks ) {
+				const response = await mwn.request( {
+					action: 'midako-index',
+					titles: chunk.join( '|' ),
+					token: token
+				}, { method: 'POST' } );
+
+				results.push( {
+					type: 'text',
+					text: `[${ wikiSite }] Successfully triggered indexing for ${ chunk.length } pages.\nResponse: ${ JSON.stringify( response['midako-index'], null, 2 ) }`
+				} );
+			}
+		} catch ( error ) {
+			hasError = true;
+			results.push( {
+				type: 'text',
+				text: `[${ wikiSite }] Failed to trigger indexing: ${ ( error as Error ).message }`
+			} );
+		}
+	}
+
+	return {
+		content: results,
+		isError: hasError
+	};
+}
