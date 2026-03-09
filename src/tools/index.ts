@@ -8,14 +8,14 @@ import { searchPageTool } from './search-page.js';
 import { setWikiTool } from './set-wiki.js';
 import { addWikiTool } from './add-wiki.js';
 import { removeWikiTool } from './remove-wiki.js';
-import { updatePageTool } from './update-page.js';
+import { updatePagesTool } from './update-pages.js';
 import { getFileTool } from './get-file.js';
-import { createPageTool } from './create-page.js';
+import { createPagesTool } from './create-pages.js';
 import { uploadFileTool } from './upload-file.js';
 import { uploadFileFromUrlTool } from './upload-file-from-url.js';
-import { deletePageTool } from './delete-page.js';
+import { deletePagesTool } from './delete-pages.js';
 import { getRevisionTool } from './get-revision.js';
-import { undeletePageTool } from './undelete-page.js';
+import { undeletePagesTool } from './undelete-pages.js';
 import { getCategoryMembersTool } from './get-category-members.js';
 import { searchPageByPrefixTool } from './search-page-by-prefix.js';
 import { searchPageByVectorTool } from './search-page-by-vector.js';
@@ -23,7 +23,7 @@ import { getNamespacesTool } from './get-namespaces.js';
 import { createNamespaceTool } from './create-namespace.js';
 import { updateWikiTool } from './update-wiki.js';
 import { getCategoriesTool } from './get-categories.js';
-import { movePageTool } from './move-page.js';
+import { movePagesTool } from './move-pages.js';
 import { uploadFileFromStreamTool } from './upload-file-from-stream.js';
 import { updateVectorIndicesTool } from './update-vector-indices.js';
 
@@ -34,14 +34,14 @@ const toolRegistrars = [
 	setWikiTool,
 	addWikiTool,
 	removeWikiTool,
-	updatePageTool,
+	updatePagesTool,
 	getFileTool,
-	createPageTool,
+	createPagesTool,
 	uploadFileTool,
 	uploadFileFromUrlTool,
-	deletePageTool,
+	deletePagesTool,
 	getRevisionTool,
-	undeletePageTool,
+	undeletePagesTool,
 	getCategoryMembersTool,
 	searchPageByPrefixTool,
 	searchPageByVectorTool,
@@ -49,7 +49,7 @@ const toolRegistrars = [
 	createNamespaceTool,
 	updateWikiTool,
 	getCategoriesTool,
-	movePageTool,
+	movePagesTool,
 	uploadFileFromStreamTool,
 	updateVectorIndicesTool
 ];
