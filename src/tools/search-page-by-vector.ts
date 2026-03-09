@@ -14,7 +14,6 @@ export function searchPageByVectorTool(server: McpServer): RegisteredTool {
         {
             wikiSite: z.string().describe('The name of the wiki site to interact with (e.g. en.wikipedia.org)'),
             query: z.string().describe('Semantic search query string'),
-            wikiId: z.string().describe('The wiki_id used by the vector service to route the request (e.g. usagiwiki)'),
             numSnippets: z.number().int().min(1).max(100).optional().describe('Number of snippets to return (default 5, max 100)'),
             snippetLength: z.number().int().min(10).max(1000).optional().describe('Maximum text length of each snippet (default 100, max 1000)')
         },
@@ -23,11 +22,30 @@ export function searchPageByVectorTool(server: McpServer): RegisteredTool {
             readOnlyHint: true,
             destructiveHint: false
         } as ToolAnnotations,
-        async ({ wikiSite, query, wikiId, numSnippets, snippetLength }) => handleSearchPageByVectorTool(wikiSite, query, wikiId, numSnippets, snippetLength)
+        async ({ wikiSite, query, numSnippets, snippetLength }) => handleSearchPageByVectorTool(wikiSite, query, numSnippets, snippetLength)
     );
 }
 
-async function handleSearchPageByVectorTool(wikiSite: string, query: string, wikiId: string, numSnippets?: number, snippetLength?: number): Promise<CallToolResult> {
+// Helper to split array into smaller chunks
+function chunkArray<T>(array: T[], size: number): T[][] {
+    const chunked: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+        chunked.push(array.slice(i, i + size));
+    }
+    return chunked;
+}
+
+interface PageData {
+    pageid?: number;
+    ns?: number;
+    title: string;
+    lastrevid?: number;
+    fullurl?: string;
+    missing?: boolean;
+    invalid?: boolean;
+}
+
+async function handleSearchPageByVectorTool(wikiSite: string, query: string, numSnippets?: number, snippetLength?: number): Promise<CallToolResult> {
     ensureWiki(wikiSite);
 
     try {
@@ -43,8 +61,10 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, wik
             };
         }
 
+        // Shio: Use wikiSite as the implicit wikiId for the LlamaIndex service.
+        const wikiId = wikiSite;
+
         // Ensure the URL is correctly formatted for search
-        // The vector service expects /search endpoint
         const searchEndpoint = vectorUrl.endsWith('/search')
             ? vectorUrl
             : `${vectorUrl.replace(/\/$/, '')}/search`;
@@ -73,26 +93,40 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, wik
         let results = data.results || [];
 
         if (results.length > 0) {
-            // Shio: Verify wiki permissions. The vector engine bypasses MediaWiki restrictions,
+            // Shio: Verify wiki permissions and fetch metadata. The vector engine bypasses MediaWiki restrictions,
             // so we must cross-reference exactly which titles this authenticated MCP session can read.
             const mwn = await getMwn();
             const uniqueTitles = [...new Set<string>(results.map((r: any) => r.metadata?.title).filter(Boolean))];
 
             if (uniqueTitles.length > 0) {
-                const verifyData = await mwn.request({
-                    action: 'query',
-                    titles: uniqueTitles.join('|')
+                // Shio: To avoid MediaWiki's API limit (50 for non-bots), we batch the requests.
+                const titleChunks = chunkArray(uniqueTitles, 50);
+                const pageDataMap = new Map<string, PageData>();
+
+                for (const chunk of titleChunks) {
+                    const verifyData = await mwn.request({
+                        action: 'query',
+                        prop: 'info',
+                        inprop: 'url',
+                        titles: chunk.join('|')
+                    });
+
+                    const pages = verifyData.query?.pages || [];
+                    for (const p of pages) {
+                        pageDataMap.set(p.title, p as PageData);
+                    }
+                }
+
+                // Filter out results that are missing or invalid (unreadable by current user)
+                results = results.filter((r: any) => {
+                    const pd = pageDataMap.get(r.metadata?.title);
+                    return pd && !pd.missing && !pd.invalid;
                 });
 
-                // MediaWiki 'query' returns pages either with a valid pageid or marked as 'missing'/'invalid'.
-                // If the user lacks read permissions, titles often appear as missing or throw an API error.
-                const accessibleTitles = new Set(
-                    (verifyData.query?.pages || [])
-                        .filter((p: any) => !p.missing && !p.invalid)
-                        .map((p: any) => p.title)
-                );
-
-                results = results.filter((r: any) => accessibleTitles.has(r.metadata?.title));
+                // Attach the MediaWiki metadata directly to the result objects for formatting
+                for (const r of results) {
+                    r._mwData = pageDataMap.get(r.metadata?.title);
+                }
             }
         }
 
@@ -119,20 +153,35 @@ async function handleSearchPageByVectorTool(wikiSite: string, query: string, wik
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getVectorSearchResultToolResult(result: any): TextContent {
-    const { server, articlepath, scriptpath } = wikiService.getCurrent().config;
-
-    // Try to reconstruct the URL based on metadata title
     const metadataTitle = result.metadata?.title || 'Unknown';
-    const isRestUrl = articlepath === undefined; // fallback mechanism
-    const pageUrl = isRestUrl ? `${server}${scriptpath}/index.php?title=${encodeURIComponent(metadataTitle)}` : `${server}${articlepath}/${encodeURIComponent(metadataTitle)}`;
+    const mwData: PageData | undefined = result._mwData;
+    
+    // Fallback URL generation if mwData is somehow missing
+    const { server, articlepath, scriptpath } = wikiService.getCurrent().config;
+    const isRestUrl = articlepath === undefined;
+    const fallbackUrl = isRestUrl ? `${server}${scriptpath}/index.php?title=${encodeURIComponent(metadataTitle)}` : `${server}${articlepath}/${encodeURIComponent(metadataTitle)}`;
+
+    const pageUrl = mwData?.fullurl || fallbackUrl;
+    const indexedRev = result.metadata?.rev_id ? Number(result.metadata.rev_id) : undefined;
+    const latestRev = mwData?.lastrevid;
+    
+    let statusStr = "Unknown";
+    if (indexedRev !== undefined && latestRev !== undefined) {
+        statusStr = (indexedRev === latestRev) ? "Up-to-date" : "Outdated (Needs re-indexing)";
+    }
 
     return {
         type: 'text',
         text: [
             `Score: ${(result.score).toFixed(4)}`,
             `Title: ${metadataTitle}`,
-            `Snippet: ${result.text}`,
-            `Page URL: ${pageUrl}`
+            `Namespace: ${mwData?.ns ?? 'Unknown'}`,
+            `Page ID: ${mwData?.pageid ?? 'Unknown'}`,
+            `Indexed Revision: ${indexedRev ?? 'Unknown'}`,
+            `Latest Revision: ${latestRev ?? 'Unknown'}`,
+            `Vector Status: ${statusStr}`,
+            `Page URL: ${pageUrl}`,
+            `Snippet: ${result.text}`
         ].join('\n')
     };
 }
