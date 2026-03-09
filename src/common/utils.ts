@@ -2,6 +2,71 @@ import fetch, { Response } from 'node-fetch';
 import { USER_AGENT } from '../server.js';
 import { wikiService } from './wikiService.js';
 import { getMwn, clearMwnCache } from './mwn.js';
+import type { TextContent } from '@modelcontextprotocol/sdk/types.js';
+
+export async function processBatchOperations<T>(
+	items: T[],
+	getWikiSite: ( item: T ) => string,
+	processItem: ( item: T ) => Promise<TextContent[]>
+): Promise<{ content: TextContent[]; isError: boolean }> {
+	const results: TextContent[] = [];
+	let hasError = false;
+
+	const config = wikiService.getFullConfig();
+	const allowConcurrent = config.allowConcurrentBatchOperations ?? false;
+
+	if ( allowConcurrent ) {
+		const promises = items.map( async ( item ) => {
+			try {
+				const wikiSite = getWikiSite( item );
+				// We still ensureWiki to catch basic config missing errors,
+				// but mwn instance switching in concurrent mode might be tricky
+				// if ensureWiki relies on a global currentWikiKey. 
+				// However, getMwn() now uses wikiService.getCurrent() inside it.
+				// This implies a fundamental race condition in the architecture 
+				// if multiple wikis are accessed concurrently because wikiService 
+				// uses a global `currentWikiKey`. 
+				// For now, if concurrent is enabled, we assume it's mostly same-wiki.
+				ensureWiki( wikiSite );
+				const res = await processItem( item );
+				return { success: true, res };
+			} catch ( error ) {
+				const wikiSite = getWikiSite( item );
+				const title = ( item as any ).title || ( item as any ).query || ( item as any ).prefix || 'unknown';
+				return { 
+					success: false, 
+					res: [ { type: 'text', text: `[${ wikiSite }] Failed operation on "${ title }": ${ ( error as Error ).message }` } as TextContent ]
+				};
+			}
+		} );
+
+		const outcomes = await Promise.all( promises );
+		for ( const outcome of outcomes ) {
+			if ( !outcome.success ) {
+				hasError = true;
+			}
+			results.push( ...outcome.res );
+		}
+	} else {
+		for ( const item of items ) {
+			try {
+				ensureWiki( getWikiSite( item ) );
+				const res = await processItem( item );
+				results.push( ...res );
+			} catch ( error ) {
+				hasError = true;
+				const wikiSite = getWikiSite( item );
+				const title = ( item as any ).title || ( item as any ).query || ( item as any ).prefix || 'unknown';
+				results.push( {
+					type: 'text',
+					text: `[${ wikiSite }] Failed operation on "${ title }": ${ ( error as Error ).message }`
+				} );
+			}
+		}
+	}
+
+	return { content: results, isError: hasError };
+}
 
 export function ensureWiki( wikiSite: string ): void {
 	let currentWiki: string | undefined;

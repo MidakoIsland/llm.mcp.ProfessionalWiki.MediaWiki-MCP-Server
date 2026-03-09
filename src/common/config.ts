@@ -50,6 +50,7 @@ export type PublicWikiConfig = Omit<WikiConfig, 'token' | 'username' | 'password
 export interface Config {
 	wikis: { [key: string]: WikiConfig };
 	defaultVectorServerConfig?: VectorServerConfig;
+	allowConcurrentBatchOperations?: boolean;
 }
 
 export const defaultConfig: Config = {
@@ -57,7 +58,8 @@ export const defaultConfig: Config = {
 	defaultVectorServerConfig: {
 		serverUrl: 'http://127.0.0.1:5000/search',
 		apiKey: ''
-	}
+	},
+	allowConcurrentBatchOperations: false
 };
 const configPath = process.env.CONFIG || 'config.json';
 

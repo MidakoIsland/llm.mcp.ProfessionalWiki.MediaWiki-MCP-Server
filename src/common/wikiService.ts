@@ -81,6 +81,10 @@ function reset(): void {
 	currentWikiKey = undefined;
 }
 
+function getFullConfig(): Config {
+	return config as Config;
+}
+
 function getVectorServerConfig( wikiKey: string ): VectorServerConfig {
 	const wikiConfig = config.wikis[ wikiKey ];
 	if ( !wikiConfig ) {
@@ -144,6 +148,7 @@ export const wikiService = {
 	setCurrent,
 	sanitize,
 	reset,
-	getVectorServerConfig
+	getVectorServerConfig,
+	getFullConfig
 };
 
