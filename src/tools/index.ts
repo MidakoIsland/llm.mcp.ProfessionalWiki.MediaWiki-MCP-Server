@@ -2,8 +2,8 @@
 import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 /* eslint-enable n/no-missing-import */
 
-import { getPageTool } from './get-page.js';
-import { getPageHistoryTool } from './get-page-history.js';
+import { getPagesTool } from './get-pages.js';
+import { getPageHistoriesTool } from './get-page-histories.js';
 import { searchPageTool } from './search-page.js';
 import { setWikiTool } from './set-wiki.js';
 import { addWikiTool } from './add-wiki.js';
@@ -14,7 +14,7 @@ import { createPagesTool } from './create-pages.js';
 import { uploadFileTool } from './upload-file.js';
 import { uploadFileFromUrlTool } from './upload-file-from-url.js';
 import { deletePagesTool } from './delete-pages.js';
-import { getRevisionTool } from './get-revision.js';
+import { getRevisionsTool } from './get-revisions.js';
 import { undeletePagesTool } from './undelete-pages.js';
 import { getCategoryMembersTool } from './get-category-members.js';
 import { searchPageByPrefixTool } from './search-page-by-prefix.js';
@@ -28,8 +28,8 @@ import { uploadFileFromStreamTool } from './upload-file-from-stream.js';
 import { updateVectorIndicesTool } from './update-vector-indices.js';
 
 const toolRegistrars = [
-	getPageTool,
-	getPageHistoryTool,
+	getPagesTool,
+	getPageHistoriesTool,
 	searchPageTool,
 	setWikiTool,
 	addWikiTool,
@@ -40,7 +40,7 @@ const toolRegistrars = [
 	uploadFileTool,
 	uploadFileFromUrlTool,
 	deletePagesTool,
-	getRevisionTool,
+	getRevisionsTool,
 	undeletePagesTool,
 	getCategoryMembersTool,
 	searchPageByPrefixTool,
