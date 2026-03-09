@@ -79,6 +79,36 @@ async function getCookiesFromJar(): Promise<string | undefined> {
 	return cookieJar.getCookieStringSync( server ) || undefined;
 }
 
+// Shio: Custom error class to carry the HTTP status code from fetchCore.
+// This allows caller functions to make retry decisions based on specific HTTP errors.
+export class FetchError extends Error {
+	public status: number;
+	public constructor( message: string, status: number ) {
+		super( message );
+		this.status = status;
+		this.name = 'FetchError';
+	}
+}
+
+// Shio: A wrapper function that intercepts 401 Unauthorized or 403 Forbidden errors
+// from the underlying REST API requests. When a session expires during a long-running
+// MCP server instance, MediaWiki returns these status codes for private wiki access.
+// Since these custom REST API functions bypass mwn's native automatic re-login logic,
+// we manually catch the auth failures, invalidate the mwn instance cache, and retry.
+// The next getMwn() call will perform a fresh login and obtain valid session cookies.
+async function withRestRetry<T>( requestFn: () => Promise<T> ): Promise<T> {
+	try {
+		return await requestFn();
+	} catch ( error ) {
+		if ( error instanceof FetchError && ( error.status === 401 || error.status === 403 ) ) {
+			// Clear mwn cache to force re-authentication and get fresh cookies
+			clearMwnCache();
+			return await requestFn();
+		}
+		throw error;
+	}
+}
+
 async function fetchCore(
 	baseUrl: string,
 	options?: {
@@ -119,8 +149,9 @@ async function fetchCore(
 	const response = await fetch( url, fetchOptions );
 	if ( !response.ok ) {
 		const errorBody = await response.text().catch( () => 'Could not read error response body' );
-		throw new Error(
-			`HTTP error! status: ${ response.status } for URL: ${ response.url }. Response: ${ errorBody }`
+		throw new FetchError(
+			`HTTP error! status: ${ response.status } for URL: ${ response.url }. Response: ${ errorBody }`,
+			response.status
 		);
 	}
 	return response;
@@ -142,23 +173,25 @@ export async function makeRestGetRequest<T>(
 	params?: Record<string, string>,
 	needAuth: boolean = false
 ): Promise<T> {
-	const headers: Record<string, string> = {
-		Accept: 'application/json'
-	};
+	return withRestRetry( async () => {
+		const headers: Record<string, string> = {
+			Accept: 'application/json'
+		};
 
-	const { headers: authHeaders } = await withAuth(
-		headers,
-		undefined,
-		needAuth
-	);
+		const { headers: authHeaders } = await withAuth(
+			headers,
+			undefined,
+			needAuth
+		);
 
-	const { server, scriptpath } = wikiService.getCurrent().config;
+		const { server, scriptpath } = wikiService.getCurrent().config;
 
-	const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
-		params,
-		headers: authHeaders
+		const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
+			params,
+			headers: authHeaders
+		} );
+		return ( await response.json() ) as T;
 	} );
-	return ( await response.json() ) as T;
 }
 
 export async function makeRestPutRequest<T>(
@@ -166,25 +199,27 @@ export async function makeRestPutRequest<T>(
 	body: Record<string, unknown>,
 	needAuth: boolean = false
 ): Promise<T> {
-	const headers: Record<string, string> = {
-		Accept: 'application/json',
-		'Content-Type': 'application/json'
-	};
+	return withRestRetry( async () => {
+		const headers: Record<string, string> = {
+			Accept: 'application/json',
+			'Content-Type': 'application/json'
+		};
 
-	const { headers: authHeaders, body: authBody } = await withAuth(
-		headers,
-		body,
-		needAuth
-	);
+		const { headers: authHeaders, body: authBody } = await withAuth(
+			headers,
+			body,
+			needAuth
+		);
 
-	const { server, scriptpath } = wikiService.getCurrent().config;
+		const { server, scriptpath } = wikiService.getCurrent().config;
 
-	const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
-		headers: authHeaders,
-		method: 'PUT',
-		body: authBody
+		const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
+			headers: authHeaders,
+			method: 'PUT',
+			body: authBody
+		} );
+		return ( await response.json() ) as T;
 	} );
-	return ( await response.json() ) as T;
 }
 
 export async function makeRestPostRequest<T>(
@@ -192,25 +227,27 @@ export async function makeRestPostRequest<T>(
 	body?: Record<string, unknown>,
 	needAuth: boolean = false
 ): Promise<T> {
-	const headers: Record<string, string> = {
-		Accept: 'application/json',
-		'Content-Type': 'application/json'
-	};
+	return withRestRetry( async () => {
+		const headers: Record<string, string> = {
+			Accept: 'application/json',
+			'Content-Type': 'application/json'
+		};
 
-	const { headers: authHeaders, body: authBody } = await withAuth(
-		headers,
-		body,
-		needAuth
-	);
+		const { headers: authHeaders, body: authBody } = await withAuth(
+			headers,
+			body,
+			needAuth
+		);
 
-	const { server, scriptpath } = wikiService.getCurrent().config;
+		const { server, scriptpath } = wikiService.getCurrent().config;
 
-	const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
-		headers: authHeaders,
-		method: 'POST',
-		body: authBody
+		const response = await fetchCore( `${ server }${ scriptpath }/rest.php${ path }`, {
+			headers: authHeaders,
+			method: 'POST',
+			body: authBody
+		} );
+		return ( await response.json() ) as T;
 	} );
-	return ( await response.json() ) as T;
 }
 
 export async function fetchPageHtml( url: string ): Promise<string | null> {
